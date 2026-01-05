@@ -1,0 +1,28 @@
+.staff-page {
+  max-width: 1400px;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.status-active {
+  color: #388e3c;
+  font-weight: 500;
+}
+
+.status-inactive {
+  color: #d32f2f;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .staff-page {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .staff-page {
+    max-width: 100%;
+  }
+}
+

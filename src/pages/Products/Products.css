@@ -1,0 +1,42 @@
+.products-page {
+  max-width: 1400px;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.status-active {
+  color: #388e3c;
+  font-weight: 500;
+}
+
+.status-inactive {
+  color: #d32f2f;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-row {
+    gap: 10px;
+  }
+}
+
