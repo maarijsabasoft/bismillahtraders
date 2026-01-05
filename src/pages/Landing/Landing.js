@@ -214,7 +214,7 @@ const Landing = () => {
             <div className="product-category">
               <div className="product-image">
                 <img 
-                  src="https://images.unsplash.com/photo-1548839140-5a719f1f1a5b?w=400&h=400&fit=crop" 
+                  src="https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=400&fit=crop" 
                   alt="Water & Hydration"
                 />
               </div>
@@ -269,30 +269,6 @@ const Landing = () => {
               <div className="benefit-icon">✓</div>
               <h3>Comprehensive Reports</h3>
               <p>Detailed analytics on sales, profits, expenses, and business performance</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="stats-section">
-        <div className="container">
-          <div className="stats-grid">
-            <div className="stat-item">
-              <div className="stat-number">100%</div>
-              <div className="stat-label">Data Security</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-number">24/7</div>
-              <div className="stat-label">Available</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-number">Fast</div>
-              <div className="stat-label">Performance</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-number">Easy</div>
-              <div className="stat-label">To Use</div>
             </div>
           </div>
         </div>
