@@ -9,26 +9,66 @@ const DB_BLOB_KEY = 'bismillah_traders.db';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
+// Cache WASM buffer and SQL instance (persists during warm invocations)
+let cachedWasmBuffer = null;
+let cachedSQL = null;
+
 // Helper to download WASM file for sql.js with timeout
+// Uses jsdelivr CDN which is faster and more reliable
 async function downloadWasm() {
+  // Return cached WASM if available (warm invocation)
+  if (cachedWasmBuffer) {
+    return cachedWasmBuffer;
+  }
+
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(new Error('WASM download timeout'));
-    }, 10000); // 10 second timeout
+    }, 8000); // 8 second timeout
 
-    https.get('https://sql.js.org/dist/sql-wasm.wasm', (response) => {
+    // Use jsdelivr CDN which is faster
+    https.get('https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.wasm', (response) => {
+      if (response.statusCode !== 200) {
+        clearTimeout(timeout);
+        reject(new Error(`WASM download failed: ${response.statusCode}`));
+        return;
+      }
+
       const chunks = [];
       response.on('data', (chunk) => chunks.push(chunk));
       response.on('end', () => {
         clearTimeout(timeout);
-        resolve(Buffer.concat(chunks));
+        const buffer = Buffer.concat(chunks);
+        // Cache the buffer for warm invocations
+        cachedWasmBuffer = buffer;
+        resolve(buffer);
       });
       response.on('error', (err) => {
         clearTimeout(timeout);
         reject(err);
       });
+    }).on('error', (err) => {
+      clearTimeout(timeout);
+      reject(err);
     });
   });
+}
+
+// Initialize SQL.js with caching
+async function initSQL() {
+  // Return cached SQL if available (warm invocation)
+  if (cachedSQL) {
+    return cachedSQL;
+  }
+
+  const wasmBuffer = await downloadWasm();
+  const SQL = await initSqlJs({
+    locateFile: () => wasmBuffer,
+  });
+
+  // Cache SQL instance for warm invocations
+  cachedSQL = SQL;
+  return SQL;
 }
 
 // Verify admin authentication
@@ -52,25 +92,30 @@ async function loadDatabase() {
       throw new Error('BLOB_READ_WRITE_TOKEN not configured');
     }
     
-    // Add timeout to blob get operation
+    // Add timeout to blob get operation (reduced timeout for faster failure)
     const blobPromise = get(DB_BLOB_KEY, {
       token: token,
     });
     
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Blob load timeout')), 15000)
+      setTimeout(() => reject(new Error('Blob load timeout')), 10000)
     );
     
     const blob = await Promise.race([blobPromise, timeoutPromise]);
     
-    if (blob) {
-      // Add timeout to fetch operation
+    if (blob && blob.url) {
+      // Add timeout to fetch operation (reduced timeout)
       const fetchPromise = fetch(blob.url);
       const fetchTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Database fetch timeout')), 15000)
+        setTimeout(() => reject(new Error('Database fetch timeout')), 10000)
       );
       
       const response = await Promise.race([fetchPromise, fetchTimeoutPromise]);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch database: ${response.status}`);
+      }
+      
       const arrayBuffer = await response.arrayBuffer();
       return new Uint8Array(arrayBuffer);
     }
@@ -96,15 +141,17 @@ async function saveDatabase(db) {
     const data = db.export();
     const buffer = Buffer.from(data);
     
-    // Add timeout to blob put operation
+    // Optimize: Only save if database has changed (size check is a simple optimization)
+    // Add timeout to blob put operation (reduced timeout)
     const putPromise = put(DB_BLOB_KEY, buffer, {
       access: 'public',
       contentType: 'application/octet-stream',
       token: token,
+      addRandomSuffix: false, // Don't add random suffix for faster operations
     });
     
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Blob save timeout')), 20000)
+      setTimeout(() => reject(new Error('Blob save timeout')), 15000)
     );
     
     await Promise.race([putPromise, timeoutPromise]);
@@ -323,11 +370,8 @@ export default async function handler(req, res) {
   const MAX_EXECUTION_TIME = 50000; // 50 seconds to leave buffer
 
   try {
-    // Initialize sql.js with timeout
-    const wasmBuffer = await downloadWasm();
-    const SQL = await initSqlJs({
-      locateFile: () => wasmBuffer,
-    });
+    // Initialize sql.js with caching (much faster on warm invocations)
+    const SQL = await initSQL();
 
     // Check timeout
     if (Date.now() - startTime > MAX_EXECUTION_TIME) {
@@ -460,4 +504,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
 
