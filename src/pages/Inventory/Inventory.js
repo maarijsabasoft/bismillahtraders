@@ -48,8 +48,8 @@ const Inventory = () => {
                COALESCE(sl.low_stock_threshold, 10) as low_stock_threshold,
                sl.updated_at
         FROM products p
-        LEFT JOIN companies c ON p.company_id = c.id
-        LEFT JOIN stock_levels sl ON p.id = sl.product_id
+        LEFT JOIN companies c ON CAST(p.company_id AS INTEGER) = CAST(c.id AS INTEGER)
+        LEFT JOIN stock_levels sl ON CAST(p.id AS INTEGER) = CAST(sl.product_id AS INTEGER)
         WHERE p.is_active = 1
         ORDER BY p.name
       `).all();
@@ -130,8 +130,18 @@ const Inventory = () => {
   };
 
   const columns = [
-    { key: 'company_name', label: 'Company', width: '20%' },
-    { key: 'product_name', label: 'Product', width: '25%' },
+    { 
+      key: 'company_name', 
+      label: 'Company', 
+      width: '20%',
+      render: (value) => value || 'N/A'
+    },
+    { 
+      key: 'product_name', 
+      label: 'Product', 
+      width: '25%',
+      render: (value) => value || 'N/A'
+    },
     { 
       key: 'current_stock', 
       label: 'Current Stock', 

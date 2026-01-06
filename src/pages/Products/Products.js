@@ -50,7 +50,7 @@ const Products = () => {
       const result = await db.prepare(`
         SELECT p.*, c.name as company_name 
         FROM products p 
-        LEFT JOIN companies c ON p.company_id = c.id 
+        LEFT JOIN companies c ON CAST(p.company_id AS INTEGER) = CAST(c.id AS INTEGER)
         ORDER BY p.created_at DESC
       `).all();
       setProducts(Array.isArray(result) ? result : []);
@@ -82,7 +82,7 @@ const Products = () => {
               discount_rate = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
           WHERE id = ?
         `).run(
-          data.company_id, data.name, data.sku || null, data.barcode || null,
+          parseInt(data.company_id), data.name, data.sku || null, data.barcode || null,
           data.category || null, data.bottle_size || null, data.purchase_price,
           data.sale_price, data.tax_rate, data.discount_rate, data.is_active,
           editingProduct.id
@@ -94,7 +94,7 @@ const Products = () => {
            sale_price, tax_rate, discount_rate, is_active)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
-          data.company_id, data.name, data.sku || null, data.barcode || null,
+          parseInt(data.company_id), data.name, data.sku || null, data.barcode || null,
           data.category || null, data.bottle_size || null, data.purchase_price,
           data.sale_price, data.tax_rate, data.discount_rate, data.is_active
         );
@@ -165,7 +165,12 @@ const Products = () => {
   };
 
   const columns = [
-    { key: 'company_name', label: 'Company', width: '15%' },
+    { 
+      key: 'company_name', 
+      label: 'Company', 
+      width: '15%',
+      render: (value) => value || 'N/A'
+    },
     { key: 'name', label: 'Product Name', width: '20%' },
     { key: 'sku', label: 'SKU', width: '10%' },
     { key: 'category', label: 'Category', width: '12%' },
