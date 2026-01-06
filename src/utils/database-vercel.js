@@ -50,7 +50,7 @@ function isVercelDeployment() {
 
 // Database wrapper with better-sqlite3-like API for Vercel
 class VercelDatabaseWrapper {
-  async prepare(sql) {
+  prepare(sql) {
     return {
       run: async (...params) => {
         try {
