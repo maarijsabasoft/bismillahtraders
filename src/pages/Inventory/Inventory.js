@@ -119,6 +119,7 @@ const Inventory = () => {
         const companyId = product.company_id?.toString() || product.companyId?.toString() || product.company_id || product.companyId;
         
         // Get calculated stock from transactions (source of truth)
+        // Default to 0 if no transactions exist
         let currentStock = calculatedStock[productId];
         if (currentStock === undefined && productId) {
           const idNum = parseInt(String(productId));
@@ -126,16 +127,9 @@ const Inventory = () => {
             currentStock = calculatedStock[idNum] || calculatedStock[String(idNum)];
           }
         }
-        // Fallback to stock_levels if no transactions found
+        // If still undefined (no transactions), default to 0
         if (currentStock === undefined) {
-          let stock = stockMap[productId];
-          if (!stock && productId) {
-            const idNum = parseInt(String(productId));
-            if (!isNaN(idNum)) {
-              stock = stockMap[idNum] || stockMap[String(idNum)];
-            }
-          }
-          currentStock = stock ? (parseInt(stock.quantity) || 0) : 0;
+          currentStock = 0;
         }
         
         // Get stock metadata (threshold, updated_at) from stock_levels
@@ -170,7 +164,7 @@ const Inventory = () => {
           id: productId,
           product_name: product.name,
           company_name: companyName || null,
-          current_stock: currentStock || 0,
+          current_stock: currentStock !== undefined ? currentStock : 0,
           low_stock_threshold: stock?.low_stock_threshold || 10,
           updated_at: stock?.updated_at || null
         };
@@ -221,19 +215,27 @@ const Inventory = () => {
         formData.notes || null
       );
 
-      // Get current stock level - try multiple ID formats
-      let currentStock = await db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ?').get(productId);
+      // Get current stock level - calculate from inventory transactions (source of truth)
+      // Default to 0 if no transactions exist
+      const allTransactions = await db.prepare('SELECT quantity FROM inventory WHERE product_id = ?').all(productId);
+      let currentQuantity = 0;
       
-      // If not found, try with integer conversion
-      if (!currentStock) {
-        const productIdInt = parseInt(productId);
-        if (!isNaN(productIdInt)) {
-          currentStock = await db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ?').get(productIdInt);
-        }
+      if (Array.isArray(allTransactions) && allTransactions.length > 0) {
+        // Sum all transaction quantities to get current stock
+        currentQuantity = allTransactions.reduce((sum, t) => {
+          const qty = parseInt(t.quantity) || 0;
+          return sum + qty;
+        }, 0);
       }
-
-      const currentQuantity = currentStock ? (parseInt(currentStock.quantity) || 0) : 0;
+      
+      // Calculate new quantity after this transaction
       const newQuantity = currentQuantity + transactionQuantity;
+      
+      // Ensure new quantity is not negative for OUT transactions
+      if (newQuantity < 0) {
+        alert(`Insufficient stock! Current stock: ${currentQuantity}, cannot reduce by ${quantity}`);
+        return;
+      }
 
       console.log('Stock update:', {
         currentQuantity,
@@ -241,8 +243,8 @@ const Inventory = () => {
         newQuantity
       });
 
-      // Ensure stock_levels is updated correctly
-      // Try to find existing stock level with multiple ID formats
+      // Update stock_levels immediately to reflect new stock
+      // Try to find existing stock level
       let existingStock = await db.prepare('SELECT * FROM stock_levels WHERE product_id = ?').get(productId);
       if (!existingStock) {
         const productIdInt = parseInt(productId);
@@ -252,39 +254,28 @@ const Inventory = () => {
       }
 
       if (existingStock) {
-        // Update existing stock level
+        // Update existing stock level immediately
         await db.prepare(`
           UPDATE stock_levels 
           SET quantity = ?, updated_at = CURRENT_TIMESTAMP
           WHERE product_id = ?
         `).run(newQuantity, productId);
-        
-        // Also try with integer if different
-        const productIdInt = parseInt(productId);
-        if (!isNaN(productIdInt) && String(productIdInt) !== productId) {
-          try {
-            await db.prepare(`
-              UPDATE stock_levels 
-              SET quantity = ?, updated_at = CURRENT_TIMESTAMP
-              WHERE product_id = ?
-            `).run(newQuantity, productIdInt);
-          } catch (e) {
-            // Ignore if update fails (might be same record)
-          }
-        }
       } else {
-        // Create new stock level entry
+        // Create new stock level entry - starts at 0, then adds/subtracts transaction
         await db.prepare(`
-          INSERT INTO stock_levels (product_id, quantity, updated_at)
-          VALUES (?, ?, CURRENT_TIMESTAMP)
+          INSERT INTO stock_levels (product_id, quantity, low_stock_threshold, updated_at)
+          VALUES (?, ?, 10, CURRENT_TIMESTAMP)
         `).run(productId, newQuantity);
       }
 
-      // Reload stock levels after successful operation
+      // Reload stock levels IMMEDIATELY to show updated values in UI
       await loadStockLevels();
+      
+      // Close modal after successful save
       handleCloseModal();
       
-      alert(`Stock ${formData.transaction_type === 'IN' ? 'IN' : 'OUT'} transaction saved successfully!`);
+      // Show success message with new stock level
+      alert(`Stock ${formData.transaction_type === 'IN' ? 'IN' : 'OUT'} transaction saved!\nNew stock level: ${newQuantity}`);
     } catch (error) {
       console.error('Error saving inventory:', error);
       alert(`Error saving inventory transaction: ${error.message || 'Unknown error'}`);
