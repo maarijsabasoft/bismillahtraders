@@ -68,7 +68,7 @@
 
 @media (max-width: 768px) {
   .header {
-    padding: 0 16px;
+    padding: 0 12px;
     height: 56px;
   }
 
@@ -76,6 +76,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 6px;
+    font-size: 22px;
   }
 
   .header-title {
@@ -89,20 +91,38 @@
   .logout-text {
     display: none;
   }
+
+  .header-actions {
+    gap: 8px;
+  }
 }
 
 @media (max-width: 480px) {
   .header {
-    padding: 0 12px;
-    height: 52px;
+    padding: 0 8px;
+    height: 50px;
   }
 
   .header-title {
     font-size: 14px;
   }
 
-  .header-actions {
+  .header-left {
     gap: 8px;
+  }
+
+  .hamburger-btn {
+    padding: 4px;
+    font-size: 20px;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .header-actions button {
+    padding: 6px 10px;
+    font-size: 12px;
   }
 }
 

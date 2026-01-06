@@ -55,8 +55,13 @@
 }
 
 @media (max-width: 480px) {
+  .card {
+    border-radius: 6px;
+  }
+
   .card-header {
     padding: 10px 12px;
+    gap: 10px;
   }
 
   .card-title {
@@ -68,12 +73,16 @@
   }
 
   .card-actions {
-    flex-direction: column;
+    flex-direction: row;
     width: 100%;
+    gap: 6px;
   }
 
   .card-actions button {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    font-size: 12px;
   }
 }
 

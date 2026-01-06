@@ -62,12 +62,12 @@
 @media (max-width: 480px) {
   .page-title {
     font-size: 18px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
 
   .dashboard-stats {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 10px;
   }
 
   .stat-content {
@@ -79,7 +79,7 @@
   }
 
   .stat-label {
-    font-size: 12px;
+    font-size: 11px;
   }
 }
 

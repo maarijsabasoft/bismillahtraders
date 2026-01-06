@@ -37,7 +37,18 @@
 
 @media (max-width: 480px) {
   .page-header {
-    gap: 12px;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .page-header h1 {
+    font-size: 18px;
+  }
+
+  .page-header button {
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 14px;
   }
 }
 

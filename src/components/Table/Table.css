@@ -57,49 +57,146 @@
   align-items: center;
 }
 
+/* Mobile Card View */
+.table-mobile {
+  display: none;
+}
+
+.table-empty-mobile {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  background-color: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.table-card {
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: all 0.2s;
+}
+
+.table-card-clickable {
+  cursor: pointer;
+}
+
+.table-card-clickable:active {
+  background-color: #f9f9f9;
+  transform: scale(0.98);
+}
+
+.table-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.table-card-row:last-of-type {
+  border-bottom: none;
+}
+
+.table-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex: 0 0 40%;
+  margin-right: 12px;
+}
+
+.table-card-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  flex: 1;
+  text-align: right;
+  word-break: break-word;
+}
+
+.table-card-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
-  .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
-    max-width: 100%;
+  .table-desktop {
+    display: none;
   }
 
-  .table {
-    min-width: 600px;
+  .table-mobile {
+    display: block;
   }
 
-  .table th,
-  .table td {
-    padding: 10px 12px;
+  .table-card {
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+
+  .table-card-row {
+    padding: 8px 0;
+  }
+
+  .table-card-label {
+    font-size: 11px;
+    flex: 0 0 35%;
+  }
+
+  .table-card-value {
     font-size: 13px;
   }
 
-  .table th {
-    font-size: 12px;
+  .table-card-actions {
+    margin-top: 10px;
+    padding-top: 10px;
   }
 }
 
 @media (max-width: 480px) {
-  .table-container {
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
+  .table-card {
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
   }
 
-  .table {
-    min-width: 500px;
-  }
-
-  .table th,
-  .table td {
-    padding: 8px 10px;
-    font-size: 12px;
-  }
-
-  .table-actions {
+  .table-card-row {
+    padding: 6px 0;
     flex-direction: column;
     gap: 4px;
+  }
+
+  .table-card-label {
+    font-size: 10px;
+    flex: none;
+    margin-right: 0;
+  }
+
+  .table-card-value {
+    font-size: 12px;
+    text-align: left;
+    font-weight: 600;
+  }
+
+  .table-card-actions {
+    margin-top: 8px;
+    padding-top: 8px;
+    gap: 6px;
+  }
+
+  .table-empty-mobile {
+    padding: 30px 16px;
+    font-size: 14px;
   }
 }
 
