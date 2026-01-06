@@ -24,10 +24,20 @@ function isElectron() {
 function shouldUseVercelDB() {
   if (typeof window === 'undefined') return false;
   
-  // Check environment variable or hostname
-  return process.env.REACT_APP_USE_VERCEL_DB === 'true' ||
-         window.location.hostname.includes('vercel.app') ||
-         window.location.hostname.includes('vercel.com');
+  // Check environment variable first
+  if (process.env.REACT_APP_USE_VERCEL_DB === 'true') {
+    return true;
+  }
+  
+  // Check hostname (works in production on Vercel)
+  const hostname = window.location.hostname;
+  if (hostname.includes('vercel.app') || 
+      hostname.includes('vercel.com') ||
+      hostname.includes('vercel.sh')) {
+    return true;
+  }
+  
+  return false;
 }
 
 export const DatabaseProvider = ({ children }) => {

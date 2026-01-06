@@ -37,10 +37,12 @@ function isVercelDeployment() {
     return true;
   }
   
-  // Check hostname
-  if (process.env.NODE_ENV === 'production') {
-    return window.location.hostname.includes('vercel.app') || 
-           window.location.hostname.includes('vercel.com');
+  // Check hostname (works in production on Vercel)
+  const hostname = window.location.hostname;
+  if (hostname.includes('vercel.app') || 
+      hostname.includes('vercel.com') ||
+      hostname.includes('vercel.sh')) {
+    return true;
   }
   
   return false;
@@ -54,8 +56,17 @@ class VercelDatabaseWrapper {
         try {
           const authToken = getAuthToken();
           if (!authToken) {
-            throw new Error('Not authenticated');
+            console.error('Vercel DB: Not authenticated - user must login first');
+            throw new Error('Not authenticated. Please login.');
           }
+
+          const requestBody = {
+            method: 'run',
+            sql,
+            params: params.length > 0 && Array.isArray(params[0]) ? params[0] : params,
+          };
+
+          console.log('Vercel DB: Making request to', API_BASE_URL, requestBody);
 
           const response = await fetch(API_BASE_URL, {
             method: 'POST',
@@ -63,22 +74,26 @@ class VercelDatabaseWrapper {
               'Content-Type': 'application/json',
               'Authorization': `Basic ${authToken}`,
             },
-            body: JSON.stringify({
-              method: 'run',
-              sql,
-              params: params.length > 0 && Array.isArray(params[0]) ? params[0] : params,
-            }),
+            body: JSON.stringify(requestBody),
           });
 
           if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Database operation failed');
+            const errorText = await response.text();
+            let error;
+            try {
+              error = JSON.parse(errorText);
+            } catch {
+              error = { message: errorText || `HTTP ${response.status}` };
+            }
+            console.error('Vercel DB: API error', response.status, error);
+            throw new Error(error.message || error.error || 'Database operation failed');
           }
 
           const result = await response.json();
+          console.log('Vercel DB: Operation successful', result);
           return result.data;
         } catch (error) {
-          console.error('Database run error:', error, sql, params);
+          console.error('Vercel DB: Database run error:', error.message, sql);
           throw error;
         }
       },
@@ -153,11 +168,27 @@ class VercelDatabaseWrapper {
 let vercelDbWrapper = null;
 
 export const initVercelDatabase = async () => {
-  if (isVercelDeployment()) {
-    vercelDbWrapper = new VercelDatabaseWrapper();
-    return true;
+  if (!isVercelDeployment()) {
+    console.log('Vercel DB: Not detected as Vercel deployment');
+    return false;
   }
-  return false;
+  
+  console.log('Vercel DB: Initializing Vercel database wrapper');
+  vercelDbWrapper = new VercelDatabaseWrapper();
+  
+  // Test if API is accessible
+  try {
+    const testUrl = API_BASE_URL;
+    console.log('Vercel DB: Testing API at', testUrl);
+    
+    // Don't actually make a request, just log
+    console.log('Vercel DB: Wrapper created successfully');
+  } catch (error) {
+    console.error('Vercel DB: Initialization error', error);
+    return false;
+  }
+  
+  return true;
 };
 
 export const getVercelDatabase = () => {
