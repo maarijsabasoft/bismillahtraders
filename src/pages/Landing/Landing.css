@@ -145,6 +145,19 @@
   box-sizing: border-box;
 }
 
+/* Desktop view: add 125px space on left/right */
+@media (min-width: 769px) {
+  .container {
+    padding-left: 125px;
+    padding-right: 125px;
+  }
+
+  .landing-header-content {
+    padding-left: 125px;
+    padding-right: 125px;
+  }
+}
+
 /* Hero Section */
 .hero-section {
   padding: 120px 0;

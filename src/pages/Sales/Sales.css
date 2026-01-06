@@ -35,8 +35,9 @@
 }
 
 .product-card:hover {
-  border-color: #1976d2;
-  background-color: #f0f7ff;
+  border-color: #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.02) 100%);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
 }
 
 .product-name {
@@ -48,7 +49,7 @@
 .product-price {
   font-size: 14px;
   font-weight: 600;
-  color: #1976d2;
+  color: #667eea;
 }
 
 .cart-table {
@@ -99,7 +100,7 @@
 .total-final {
   font-weight: 600;
   font-size: 18px;
-  color: #1976d2;
+  color: #667eea;
   border-top: 1px solid #e0e0e0;
   padding-top: 12px;
   margin-top: 8px;

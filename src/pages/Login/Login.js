@@ -78,9 +78,10 @@ const Login = () => {
               variant="primary" 
               size="large"
               disabled={loading}
+              className="login-to-dashboard-btn"
               style={{ width: '100%', marginTop: '20px' }}
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? 'Logging in...' : 'Login to Dashboard'}
             </Button>
           </form>
           

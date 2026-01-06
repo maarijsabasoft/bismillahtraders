@@ -75,9 +75,10 @@
 }
 
 .sidebar-item.active {
-  background-color: #f0f7ff;
-  color: #1976d2;
-  border-left-color: #1976d2;
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.05) 100%);
+  color: #667eea;
+  border-left-color: #667eea;
+  border-left-width: 3px;
   font-weight: 500;
 }
 

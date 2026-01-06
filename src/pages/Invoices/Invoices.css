@@ -34,13 +34,19 @@
   justify-content: space-between;
   margin-bottom: 30px;
   padding-bottom: 20px;
-  border-bottom: 3px solid #1976d2;
+  border-bottom: 3px solid #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.02) 100%);
+  padding: 20px;
+  border-radius: 4px;
 }
 
 .invoice-a4 .company-info h1 {
   margin: 0 0 8px 0;
   font-size: 32px;
-  color: #1976d2;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   font-weight: 700;
 }
 
@@ -80,8 +86,8 @@
 .invoice-a4 .invoice-customer {
   margin-bottom: 25px;
   padding: 15px;
-  background: #f9f9f9;
-  border-left: 4px solid #1976d2;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.02) 100%);
+  border-left: 4px solid #667eea;
   border-radius: 4px;
 }
 
@@ -108,7 +114,7 @@
 }
 
 .invoice-a4 .invoice-items th {
-  background: #1976d2;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 12px 8px;
   text-align: left;
@@ -157,8 +163,8 @@
 .invoice-a4 .total-final {
   font-weight: 700;
   font-size: 18px;
-  color: #1976d2;
-  border-top: 2px solid #1976d2;
+  color: #667eea;
+  border-top: 2px solid #667eea;
   padding-top: 12px;
   margin-top: 8px;
 }
@@ -412,6 +418,8 @@
 
 .invoice-container.invoice-a4 {
   max-width: 210mm;
+  min-width: 210mm;
+  width: 210mm;
   margin: 20px auto;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
@@ -422,6 +430,12 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
+/* Ensure invoice-view allows horizontal scroll on mobile */
+.invoice-view {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 @media (max-width: 768px) {
   .invoices-page {
     max-width: 100%;
@@ -429,6 +443,8 @@
 
   .invoice-view {
     padding: 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .invoice-actions {
@@ -444,7 +460,15 @@
     padding: 16px;
   }
 
-  .invoice-container.invoice-a4,
+  /* Keep A4 size on mobile - allow horizontal scroll */
+  .invoice-container.invoice-a4 {
+    max-width: 210mm;
+    min-width: 210mm;
+    width: 210mm;
+    margin: 16px auto;
+    /* Maintain A4 size, allow horizontal scroll */
+  }
+
   .invoice-container.invoice-slip {
     max-width: 100%;
     margin: 16px 0;
@@ -454,10 +478,21 @@
 @media (max-width: 480px) {
   .invoice-view {
     padding: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .invoice-container {
     padding: 12px;
+  }
+
+  /* Keep A4 size on small mobile - allow horizontal scroll */
+  .invoice-container.invoice-a4 {
+    max-width: 210mm;
+    min-width: 210mm;
+    width: 210mm;
+    margin: 12px auto;
+    /* Maintain A4 size, allow horizontal scroll */
   }
 
   .invoice-a4 .invoice-header {

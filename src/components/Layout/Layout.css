@@ -28,6 +28,14 @@
   min-width: 0;
 }
 
+/* Desktop view: add 100px space on left/right */
+@media (min-width: 769px) {
+  .layout-content {
+    padding-left: 100px;
+    padding-right: 100px;
+  }
+}
+
 .sidebar-overlay {
   display: none;
   position: fixed;

@@ -67,7 +67,7 @@ const Dashboard = () => {
   }, [db, isReady]);
 
   const statCards = [
-    { label: "Today's Sales", value: `Rs. ${stats.todaySales.toLocaleString()}`, color: '#1976d2' },
+    { label: "Today's Sales", value: `Rs. ${stats.todaySales.toLocaleString()}`, color: '#667eea' },
     { label: 'Total Sales', value: `Rs. ${stats.totalSales.toLocaleString()}`, color: '#388e3c' },
     { label: 'Total Customers', value: stats.totalCustomers.toString(), color: '#f57c00' },
     { label: 'Total Products', value: stats.totalProducts.toString(), color: '#7b1fa2' },
