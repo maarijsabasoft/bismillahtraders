@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { initDatabase, getDatabase, saveDatabase } from '../utils/database';
 import { initVercelDatabase, getVercelDatabase } from '../utils/database-vercel';
+import { initPostgresDatabase, getPostgresDatabase } from '../utils/database-postgres';
+import { initMongoDatabase, getMongoDatabase } from '../utils/database-mongodb';
 import { initHybridDatabase, getHybridDatabase } from '../utils/database-hybrid';
 
 const DatabaseContext = createContext();
@@ -65,8 +67,34 @@ export const DatabaseProvider = ({ children }) => {
           }
         }
         
-        // Try Vercel database first if on Vercel (web deployment)
+        // Try MongoDB Atlas first if on Vercel (web deployment) - FASTEST & MOST RELIABLE
         if (shouldUseVercelDB()) {
+          const mongoDbInitialized = await initMongoDatabase();
+          if (mongoDbInitialized) {
+            const mongoDb = getMongoDatabase();
+            if (mongoDb) {
+              setDb(mongoDb);
+              setIsReady(true);
+              setDbMode('mongodb');
+              console.log('Using MongoDB Atlas database (fast, reliable, scalable)');
+              return;
+            }
+          }
+          
+          // Fallback to Postgres
+          const postgresDbInitialized = await initPostgresDatabase();
+          if (postgresDbInitialized) {
+            const postgresDb = getPostgresDatabase();
+            if (postgresDb) {
+              setDb(postgresDb);
+              setIsReady(true);
+              setDbMode('postgres');
+              console.log('Using Vercel Postgres database (fast, reliable)');
+              return;
+            }
+          }
+          
+          // Fallback to old Vercel SQLite blob storage (slower)
           const vercelDbInitialized = await initVercelDatabase();
           if (vercelDbInitialized) {
             const vercelDb = getVercelDatabase();
@@ -74,7 +102,7 @@ export const DatabaseProvider = ({ children }) => {
               setDb(vercelDb);
               setIsReady(true);
               setDbMode('vercel');
-              console.log('Using Vercel serverless database');
+              console.log('Using Vercel serverless database (SQLite blob)');
               return;
             }
           }
