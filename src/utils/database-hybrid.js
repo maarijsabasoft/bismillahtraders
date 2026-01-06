@@ -1,7 +1,7 @@
-// Hybrid database wrapper for Electron with Vercel sync
-// Allows Electron app to use Vercel database for live sync
+// Hybrid database wrapper for Electron with MongoDB sync
+// Allows Electron app to use MongoDB database for live sync
 
-import { initVercelDatabase, getVercelDatabase } from './database-vercel';
+import { initMongoDatabase, getMongoDatabase } from './database-mongodb';
 import { initDatabase, getDatabase } from './database';
 
 // Check if running in Electron
@@ -11,54 +11,54 @@ function isElectron() {
          (window.require('electron') || window.process?.type === 'renderer');
 }
 
-// Check if Vercel sync is enabled
-function isVercelSyncEnabled() {
+// Check if MongoDB sync is enabled
+function isMongoSyncEnabled() {
   // Check environment variable or localStorage setting
   if (typeof window !== 'undefined') {
-    const syncEnabled = localStorage.getItem('vercel_sync_enabled');
+    const syncEnabled = localStorage.getItem('mongodb_sync_enabled');
     if (syncEnabled === 'true') return true;
     if (syncEnabled === 'false') return false;
   }
   
   // Default: use environment variable
-  return process.env.REACT_APP_ELECTRON_VERCEL_SYNC === 'true';
+  return process.env.REACT_APP_ELECTRON_MONGODB_SYNC === 'true';
 }
 
-// Hybrid database wrapper that can switch between local and Vercel
+// Hybrid database wrapper that can switch between local and MongoDB
 class HybridDatabaseWrapper {
   constructor() {
     this.localDb = null;
-    this.vercelDb = null;
-    this.useVercel = false;
+    this.mongoDb = null;
+    this.useMongo = false;
     this.isReady = false;
   }
 
   async init() {
     try {
-      // Check if Vercel sync is enabled
-      if (isVercelSyncEnabled()) {
-        console.log('Electron: Vercel sync enabled - using cloud database');
+      // Check if MongoDB sync is enabled
+      if (isMongoSyncEnabled()) {
+        console.log('Electron: MongoDB sync enabled - using cloud database');
         
-        // Initialize Vercel database
-        const vercelInitialized = await initVercelDatabase();
-        if (vercelInitialized) {
-          this.vercelDb = getVercelDatabase();
-          if (this.vercelDb) {
-            this.useVercel = true;
+        // Initialize MongoDB database
+        const mongoInitialized = await initMongoDatabase();
+        if (mongoInitialized) {
+          this.mongoDb = getMongoDatabase();
+          if (this.mongoDb) {
+            this.useMongo = true;
             this.isReady = true;
-            console.log('Electron: Connected to Vercel database');
+            console.log('Electron: Connected to MongoDB database');
             return true;
           }
         }
         
-        console.warn('Electron: Vercel database failed, falling back to local');
+        console.warn('Electron: MongoDB database failed, falling back to local');
       }
       
       // Fallback to local database
       console.log('Electron: Using local database');
       await initDatabase();
       this.localDb = getDatabase();
-      this.useVercel = false;
+      this.useMongo = false;
       this.isReady = true;
       return true;
     } catch (error) {
@@ -72,7 +72,7 @@ class HybridDatabaseWrapper {
       throw new Error('Database not initialized');
     }
 
-    const activeDb = this.useVercel ? this.vercelDb : this.localDb;
+    const activeDb = this.useMongo ? this.mongoDb : this.localDb;
     
     if (!activeDb) {
       throw new Error('No database available');
@@ -83,12 +83,12 @@ class HybridDatabaseWrapper {
 
   // Get current database mode
   getMode() {
-    return this.useVercel ? 'vercel' : 'local';
+    return this.useMongo ? 'mongodb' : 'local';
   }
 
-  // Toggle between local and Vercel (requires re-initialization)
-  async switchMode(useVercel) {
-    if (useVercel === this.useVercel) return;
+  // Toggle between local and MongoDB (requires re-initialization)
+  async switchMode(useMongo) {
+    if (useMongo === this.useMongo) return;
     
     this.isReady = false;
     await this.init();
@@ -111,14 +111,14 @@ export const getHybridDatabase = () => {
   return hybridDbWrapper;
 };
 
-// Enable/disable Vercel sync in Electron
-export const setVercelSync = (enabled) => {
+// Enable/disable MongoDB sync in Electron
+export const setMongoSync = (enabled) => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('vercel_sync_enabled', enabled ? 'true' : 'false');
+    localStorage.setItem('mongodb_sync_enabled', enabled ? 'true' : 'false');
   }
 };
 
-export const getVercelSyncStatus = () => {
-  return isVercelSyncEnabled();
+export const getMongoSyncStatus = () => {
+  return isMongoSyncEnabled();
 };
 

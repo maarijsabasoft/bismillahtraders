@@ -60,7 +60,7 @@ const Inventory = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.product_id || !formData.quantity) return;
 
@@ -72,7 +72,7 @@ const Inventory = () => {
       }
 
       // Insert inventory transaction
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO inventory 
         (product_id, transaction_type, quantity, batch_number, expiry_date, notes)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -86,23 +86,24 @@ const Inventory = () => {
       );
 
       // Update stock level
-      const currentStock = db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ?').get(formData.product_id);
+      const currentStock = await db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ?').get(formData.product_id);
       const newQuantity = (currentStock ? currentStock.quantity : 0) + (formData.transaction_type === 'IN' ? quantity : -quantity);
       
       if (currentStock) {
-        db.prepare(`
+        await db.prepare(`
           UPDATE stock_levels 
           SET quantity = ?, updated_at = CURRENT_TIMESTAMP
           WHERE product_id = ?
         `).run(newQuantity, formData.product_id);
       } else {
-        db.prepare(`
+        await db.prepare(`
           INSERT INTO stock_levels (product_id, quantity, updated_at)
           VALUES (?, ?, CURRENT_TIMESTAMP)
         `).run(formData.product_id, newQuantity);
       }
 
-      loadStockLevels();
+      // Reload stock levels after successful operation
+      await loadStockLevels();
       handleCloseModal();
     } catch (error) {
       console.error('Error saving inventory:', error);

@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { initDatabase, getDatabase, saveDatabase } from '../utils/database';
-import { initVercelDatabase, getVercelDatabase } from '../utils/database-vercel';
-import { initPostgresDatabase, getPostgresDatabase } from '../utils/database-postgres';
 import { initMongoDatabase, getMongoDatabase } from '../utils/database-mongodb';
 import { initHybridDatabase, getHybridDatabase } from '../utils/database-hybrid';
 
@@ -72,7 +70,7 @@ export const DatabaseProvider = ({ children }) => {
           }
         }
         
-        // Try MongoDB Atlas first if on Vercel (web deployment) - FASTEST & MOST RELIABLE
+        // FORCE MongoDB Atlas if on Vercel (web deployment) - NO FALLBACKS
         if (shouldUseVercelDB()) {
           const mongoDbInitialized = await initMongoDatabase();
           if (mongoDbInitialized) {
@@ -81,36 +79,14 @@ export const DatabaseProvider = ({ children }) => {
               setDb(mongoDb);
               setIsReady(true);
               setDbMode('mongodb');
-              console.log('Using MongoDB Atlas database (fast, reliable, scalable)');
+              console.log('✅ Using MongoDB Atlas database (fast, reliable, scalable)');
               return;
             }
           }
           
-          // Fallback to Postgres
-          const postgresDbInitialized = await initPostgresDatabase();
-          if (postgresDbInitialized) {
-            const postgresDb = getPostgresDatabase();
-            if (postgresDb) {
-              setDb(postgresDb);
-              setIsReady(true);
-              setDbMode('postgres');
-              console.log('Using Vercel Postgres database (fast, reliable)');
-              return;
-            }
-          }
-          
-          // Fallback to old Vercel SQLite blob storage (slower)
-          const vercelDbInitialized = await initVercelDatabase();
-          if (vercelDbInitialized) {
-            const vercelDb = getVercelDatabase();
-            if (vercelDb) {
-              setDb(vercelDb);
-              setIsReady(true);
-              setDbMode('vercel');
-              console.log('Using Vercel serverless database (SQLite blob)');
-              return;
-            }
-          }
+          // If MongoDB fails, show error instead of falling back
+          console.error('❌ MongoDB initialization failed. Please check MONGODB_URI environment variable.');
+          alert('Database connection failed. Please check your MongoDB configuration.');
         }
         
         // Fallback to local database (Electron/IndexedDB)

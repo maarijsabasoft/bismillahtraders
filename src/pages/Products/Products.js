@@ -60,7 +60,7 @@ const Products = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.company_id) return;
 
@@ -75,7 +75,7 @@ const Products = () => {
       };
 
       if (editingProduct) {
-        db.prepare(`
+        await db.prepare(`
           UPDATE products 
           SET company_id = ?, name = ?, sku = ?, barcode = ?, category = ?,
               bottle_size = ?, purchase_price = ?, sale_price = ?, tax_rate = ?,
@@ -88,7 +88,7 @@ const Products = () => {
           editingProduct.id
         );
       } else {
-        db.prepare(`
+        await db.prepare(`
           INSERT INTO products 
           (company_id, name, sku, barcode, category, bottle_size, purchase_price, 
            sale_price, tax_rate, discount_rate, is_active)
@@ -99,7 +99,9 @@ const Products = () => {
           data.sale_price, data.tax_rate, data.discount_rate, data.is_active
         );
       }
-      loadProducts();
+      
+      // Reload products after successful operation
+      await loadProducts();
       handleCloseModal();
     } catch (error) {
       console.error('Error saving product:', error);
@@ -125,11 +127,12 @@ const Products = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
-        db.prepare('DELETE FROM products WHERE id = ?').run(id);
-        loadProducts();
+        await db.prepare('DELETE FROM products WHERE id = ?').run(id);
+        // Reload products after successful deletion
+        await loadProducts();
       } catch (error) {
         console.error('Error deleting product:', error);
         alert('Cannot delete product. It may have associated sales or inventory.');
