@@ -6,6 +6,7 @@ import Input from '../../components/Input/Input';
 import Modal from '../../components/Modal/Modal';
 import Table from '../../components/Table/Table';
 import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
+import { formatDate } from '../../utils/dateUtils';
 import './Companies.css';
 
 const Companies = () => {
@@ -85,7 +86,7 @@ const Companies = () => {
       key: 'created_at', 
       label: 'Created At', 
       width: '20%',
-      render: (value) => new Date(value).toLocaleDateString()
+      render: (value) => formatDate(value)
     },
   ];
 

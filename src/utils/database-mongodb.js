@@ -149,16 +149,20 @@ class MongoDatabaseWrapper {
               
               let paramIndex = 0;
               assignments.forEach(assign => {
-                const [col] = assign.split('=').map(s => s.trim());
-                if (flatParams[paramIndex] !== undefined) {
+                const [col, val] = assign.split('=').map(s => s.trim());
+                // Skip CURRENT_TIMESTAMP - will be handled by server
+                if (val === 'CURRENT_TIMESTAMP' || val === 'CURRENT_TIMESTAMP()') {
+                  // Don't add to data, server will handle it - but don't increment paramIndex
+                } else if (flatParams[paramIndex] !== undefined) {
                   data[col] = flatParams[paramIndex];
                   paramIndex++;
                 }
               });
               
-              // Handle WHERE clause
+              // Handle WHERE clause - the WHERE parameter comes after all SET parameters
               if (whereMatch && flatParams[paramIndex] !== undefined) {
-                filter[whereMatch[1]] = flatParams[paramIndex];
+                // Use 'id' field for filtering (will be converted to _id ObjectId on server)
+                filter['id'] = flatParams[paramIndex];
               }
             }
           } else if (upperSQL.startsWith('DELETE')) {
@@ -166,7 +170,8 @@ class MongoDatabaseWrapper {
             // Parse DELETE FROM table WHERE id = ?
             const whereMatch = sql.match(/WHERE\s+(\w+)\s*=\s*\?/i);
             if (whereMatch && flatParams[0] !== undefined) {
-              filter[whereMatch[1]] = flatParams[0];
+              // Use 'id' field for filtering (MongoDB stores as _id but we query by id string)
+              filter['id'] = flatParams[0];
             }
           } else {
             throw new Error(`Unsupported SQL operation: ${sql.substring(0, 20)}...`);
@@ -291,7 +296,12 @@ class MongoDatabaseWrapper {
           
           const orderMatch = sql.match(/ORDER\s+BY\s+(\w+)\s+(ASC|DESC)?/i);
           if (orderMatch) {
-            options.sort = { [orderMatch[1]]: orderMatch[2]?.toUpperCase() === 'DESC' ? -1 : 1 };
+            const sortField = orderMatch[1];
+            const sortOrder = orderMatch[2]?.toUpperCase() === 'DESC' ? -1 : 1;
+            options.sort = { [sortField]: sortOrder };
+          } else {
+            // Default sort by created_at DESC if no ORDER BY specified
+            options.sort = { created_at: -1 };
           }
 
           const requestBody = {

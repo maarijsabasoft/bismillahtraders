@@ -1,7 +1,7 @@
 // Vercel MongoDB Atlas API route - Fast, reliable, no timeouts
 // Uses MongoDB Atlas for serverless document database
 
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import { verifyAuth } from './auth';
 
 // MongoDB connection
@@ -92,13 +92,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Method and collection required' });
     }
 
+    // Convert 'id' field in filter to '_id' ObjectId for MongoDB
+    const mongoFilter = convertFilterToMongo(filter);
+
     let result;
     const coll = db.collection(collection);
 
     switch (method) {
       case 'insertOne':
         {
-          const insertResult = await coll.insertOne(data);
+          // Add created_at and updated_at if not present
+          const now = new Date().toISOString();
+          const insertData = {
+            ...data,
+            created_at: data.created_at || now,
+            updated_at: data.updated_at || now,
+          };
+          
+          const insertResult = await coll.insertOne(insertData);
           result = {
             lastInsertRowid: insertResult.insertedId.toString(),
             changes: 1,
@@ -118,14 +129,14 @@ export default async function handler(req, res) {
 
       case 'findOne':
         {
-          const doc = await coll.findOne(filter, options);
+          const doc = await coll.findOne(mongoFilter, options);
           result = doc ? convertMongoDoc(doc) : null;
         }
         break;
 
       case 'find':
         {
-          const cursor = coll.find(filter, options);
+          const cursor = coll.find(mongoFilter, options);
           const docs = await cursor.toArray();
           result = docs.map(convertMongoDoc);
         }
@@ -133,7 +144,13 @@ export default async function handler(req, res) {
 
       case 'updateOne':
         {
-          const updateResult = await coll.updateOne(filter, { $set: data }, options);
+          // Add updated_at if not present
+          const updateData = {
+            ...data,
+            updated_at: data.updated_at || new Date().toISOString(),
+          };
+          
+          const updateResult = await coll.updateOne(mongoFilter, { $set: updateData }, options);
           result = {
             changes: updateResult.modifiedCount,
             matchedCount: updateResult.matchedCount,
@@ -143,7 +160,7 @@ export default async function handler(req, res) {
 
       case 'updateMany':
         {
-          const updateResult = await coll.updateMany(filter, { $set: data }, options);
+          const updateResult = await coll.updateMany(mongoFilter, { $set: data }, options);
           result = {
             changes: updateResult.modifiedCount,
             matchedCount: updateResult.matchedCount,
@@ -153,7 +170,7 @@ export default async function handler(req, res) {
 
       case 'deleteOne':
         {
-          const deleteResult = await coll.deleteOne(filter);
+          const deleteResult = await coll.deleteOne(mongoFilter);
           result = {
             changes: deleteResult.deletedCount,
           };
@@ -162,7 +179,7 @@ export default async function handler(req, res) {
 
       case 'deleteMany':
         {
-          const deleteResult = await coll.deleteMany(filter);
+          const deleteResult = await coll.deleteMany(mongoFilter);
           result = {
             changes: deleteResult.deletedCount,
           };
@@ -180,7 +197,7 @@ export default async function handler(req, res) {
 
       case 'count':
         {
-          const count = await coll.countDocuments(filter);
+          const count = await coll.countDocuments(mongoFilter);
           result = count;
         }
         break;
@@ -202,6 +219,31 @@ export default async function handler(req, res) {
   }
 }
 
+// Convert filter with 'id' field to MongoDB '_id' ObjectId
+function convertFilterToMongo(filter) {
+  if (!filter || typeof filter !== 'object') {
+    return filter;
+  }
+  
+  const mongoFilter = { ...filter };
+  
+  // If filter has 'id' field, convert it to '_id' ObjectId
+  if (mongoFilter.id !== undefined) {
+    try {
+      // Try to convert string id to ObjectId
+      mongoFilter._id = ObjectId.isValid(mongoFilter.id) 
+        ? new ObjectId(mongoFilter.id) 
+        : mongoFilter.id;
+      delete mongoFilter.id;
+    } catch (error) {
+      // If conversion fails, keep original id
+      console.warn('Could not convert id to ObjectId:', mongoFilter.id);
+    }
+  }
+  
+  return mongoFilter;
+}
+
 // Convert MongoDB document to plain object
 function convertMongoDoc(doc) {
   if (!doc) return null;
@@ -212,6 +254,16 @@ function convertMongoDoc(doc) {
     converted.id = converted._id.toString();
     delete converted._id;
   }
+  
+  // Convert Date objects to ISO strings for compatibility
+  Object.keys(converted).forEach(key => {
+    if (converted[key] instanceof Date) {
+      converted[key] = converted[key].toISOString();
+    } else if (converted[key] && typeof converted[key] === 'object' && converted[key].constructor?.name === 'Date') {
+      // Handle MongoDB Date objects
+      converted[key] = new Date(converted[key]).toISOString();
+    }
+  });
   
   return converted;
 }
