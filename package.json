@@ -13,26 +13,27 @@
     "electron-pack": "electron-builder"
   },
   "dependencies": {
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.0",
+    "date-fns": "^2.30.0",
+    "mongodb": "^6.3.0",
+    "path-browserify": "^1.0.1",
+    "process": "^0.11.10",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-icons": "^4.12.0",
     "react-router-dom": "^6.20.0",
     "react-scripts": "5.0.1",
     "sql.js": "^1.10.3",
-    "mongodb": "^6.3.0",
-    "date-fns": "^2.30.0",
-    "react-icons": "^4.12.0",
-    "crypto-browserify": "^3.12.0",
-    "path-browserify": "^1.0.1",
     "stream-browserify": "^3.0.0",
     "util": "^0.12.5",
-    "buffer": "^6.0.3",
-    "process": "^0.11.10"
+    "vm-browserify": "^1.1.2"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "electron": "^27.1.0",
     "electron-builder": "^24.9.1",
     "react-app-rewired": "^2.2.1",
-    "concurrently": "^8.2.2",
     "wait-on": "^7.2.0"
   },
   "build": {
@@ -63,4 +64,3 @@
     ]
   }
 }
-
