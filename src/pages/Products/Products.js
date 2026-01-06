@@ -55,20 +55,74 @@ const Products = () => {
       const companies = Array.isArray(companiesResult) ? companiesResult : [];
       
       // Create a map of company_id to company_name for quick lookup
+      // Handle all possible ID formats (string, integer, ObjectId)
       const companyMap = {};
       companies.forEach(company => {
-        // Handle both string and integer IDs
-        const id = company.id?.toString() || company._id?.toString();
+        // Try all possible ID field names and formats
+        const id = company.id?.toString() || 
+                   company._id?.toString() || 
+                   company.id || 
+                   company._id;
         if (id) {
-          companyMap[id] = company.name;
+          const idStr = String(id);
+          companyMap[idStr] = company.name;
+          // Also map integer version if it's a number
+          const idNum = parseInt(idStr);
+          if (!isNaN(idNum)) {
+            companyMap[idNum] = company.name;
+            companyMap[String(idNum)] = company.name;
+          }
         }
       });
       
       // Join products with company names
-      const productsWithCompanies = products.map(product => ({
-        ...product,
-        company_name: companyMap[product.company_id?.toString()] || companyMap[product.companyId?.toString()] || null
-      }));
+      const productsWithCompanies = products.map(product => {
+        // Try all possible company_id formats
+        const companyId = product.company_id?.toString() || 
+                         product.companyId?.toString() || 
+                         product.company_id || 
+                         product.companyId;
+        
+        let companyName = null;
+        if (companyId) {
+          // Try multiple lookup strategies
+          const idStr = String(companyId);
+          const idNum = parseInt(idStr);
+          
+          companyName = companyMap[idStr] || 
+                       companyMap[idNum] || 
+                       companyMap[String(idNum)] ||
+                       companyMap[companyId];
+          
+          // If still not found, try to find by matching any numeric conversion
+          if (!companyName && !isNaN(idNum)) {
+            // Try to find company by comparing all possible ID formats
+            const foundCompany = companies.find(c => {
+              const cId = c.id?.toString() || c._id?.toString() || c.id || c._id;
+              return String(cId) === idStr || 
+                     parseInt(String(cId)) === idNum ||
+                     String(cId) === String(idNum);
+            });
+            if (foundCompany) {
+              companyName = foundCompany.name;
+            }
+          }
+        }
+        
+        return {
+          ...product,
+          company_name: companyName
+        };
+      });
+      
+      // Debug logging
+      if (products.length > 0 && companies.length > 0) {
+        console.log('Products loaded:', products.length);
+        console.log('Companies loaded:', companies.length);
+        console.log('Company map sample:', Object.keys(companyMap).slice(0, 3));
+        console.log('First product company_id:', products[0]?.company_id, 'Type:', typeof products[0]?.company_id);
+        console.log('First product company_name:', productsWithCompanies[0]?.company_name);
+      }
       
       setProducts(productsWithCompanies);
     } catch (error) {
@@ -128,17 +182,23 @@ const Products = () => {
 
   const handleEdit = (product) => {
     setEditingProduct(product);
+    // Handle company_id in various formats
+    const companyId = product.company_id?.toString() || 
+                     product.companyId?.toString() || 
+                     product.company_id || 
+                     product.companyId || 
+                     '';
     setFormData({
-      company_id: product.company_id.toString(),
+      company_id: companyId,
       name: product.name,
       sku: product.sku || '',
       barcode: product.barcode || '',
       category: product.category || '',
       bottle_size: product.bottle_size || '',
-      purchase_price: product.purchase_price.toString(),
-      sale_price: product.sale_price.toString(),
-      tax_rate: product.tax_rate.toString(),
-      discount_rate: product.discount_rate.toString(),
+      purchase_price: product.purchase_price?.toString() || '0',
+      sale_price: product.sale_price?.toString() || '0',
+      tax_rate: product.tax_rate?.toString() || '0',
+      discount_rate: product.discount_rate?.toString() || '0',
       is_active: product.is_active === 1
     });
     setIsModalOpen(true);

@@ -61,23 +61,61 @@ const Inventory = () => {
       
       const stockMap = {};
       stockLevels.forEach(stock => {
-        const productId = stock.product_id?.toString() || stock.productId?.toString();
+        // Handle multiple ID format variations
+        const productId = stock.product_id?.toString() || 
+                         stock.productId?.toString() || 
+                         stock.product_id || 
+                         stock.productId;
         if (productId) {
-          stockMap[productId] = stock;
+          const idStr = String(productId);
+          stockMap[idStr] = stock;
+          // Also map integer version
+          const idNum = parseInt(idStr);
+          if (!isNaN(idNum)) {
+            stockMap[idNum] = stock;
+            stockMap[String(idNum)] = stock;
+          }
         }
       });
       
       // Join products with company names and stock levels
       const productsWithData = products.map(product => {
-        const productId = product.id?.toString() || product._id?.toString();
-        const companyId = product.company_id?.toString() || product.companyId?.toString();
-        const stock = stockMap[productId];
+        const productId = product.id?.toString() || product._id?.toString() || product.id || product._id;
+        const companyId = product.company_id?.toString() || product.companyId?.toString() || product.company_id || product.companyId;
+        
+        // Try multiple lookup strategies for stock
+        let stock = stockMap[productId];
+        if (!stock && productId) {
+          const idNum = parseInt(String(productId));
+          if (!isNaN(idNum)) {
+            stock = stockMap[idNum] || stockMap[String(idNum)];
+          }
+        }
+        
+        // Try multiple lookup strategies for company
+        let companyName = companyMap[companyId];
+        if (!companyName && companyId) {
+          const idStr = String(companyId);
+          const idNum = parseInt(idStr);
+          companyName = companyMap[idStr] || companyMap[idNum] || companyMap[String(idNum)];
+          
+          // Fallback: direct search
+          if (!companyName) {
+            const foundCompany = companies.find(c => {
+              const cId = c.id?.toString() || c._id?.toString() || c.id || c._id;
+              return String(cId) === idStr || parseInt(String(cId)) === idNum;
+            });
+            if (foundCompany) {
+              companyName = foundCompany.name;
+            }
+          }
+        }
         
         return {
           id: productId,
           product_name: product.name,
-          company_name: companyMap[companyId] || null,
-          current_stock: stock?.quantity || 0,
+          company_name: companyName || null,
+          current_stock: stock ? (parseInt(stock.quantity) || 0) : 0,
           low_stock_threshold: stock?.low_stock_threshold || 10,
           updated_at: stock?.updated_at || null
         };
@@ -92,7 +130,10 @@ const Inventory = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.product_id || !formData.quantity) return;
+    if (!formData.product_id || !formData.quantity) {
+      alert('Please select a product and enter quantity');
+      return;
+    }
 
     try {
       const quantity = parseInt(formData.quantity);
@@ -101,43 +142,73 @@ const Inventory = () => {
         return;
       }
 
+      // Ensure product_id is in the correct format
+      const productId = formData.product_id.toString();
+      const transactionQuantity = formData.transaction_type === 'IN' ? quantity : -quantity;
+
+      console.log('Inventory transaction:', {
+        product_id: productId,
+        type: formData.transaction_type,
+        quantity: transactionQuantity
+      });
+
       // Insert inventory transaction
       await db.prepare(`
         INSERT INTO inventory 
         (product_id, transaction_type, quantity, batch_number, expiry_date, notes)
         VALUES (?, ?, ?, ?, ?, ?)
       `).run(
-        formData.product_id,
+        productId,
         formData.transaction_type,
-        formData.transaction_type === 'IN' ? quantity : -quantity,
+        transactionQuantity,
         formData.batch_number || null,
         formData.expiry_date || null,
         formData.notes || null
       );
 
-      // Update stock level
-      const currentStock = await db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ?').get(formData.product_id);
-      const newQuantity = (currentStock ? currentStock.quantity : 0) + (formData.transaction_type === 'IN' ? quantity : -quantity);
+      // Get current stock level - try multiple ID formats
+      let currentStock = await db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ?').get(productId);
       
+      // If not found, try with integer conversion
+      if (!currentStock) {
+        const productIdInt = parseInt(productId);
+        if (!isNaN(productIdInt)) {
+          currentStock = await db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ?').get(productIdInt);
+        }
+      }
+
+      const currentQuantity = currentStock ? (parseInt(currentStock.quantity) || 0) : 0;
+      const newQuantity = currentQuantity + transactionQuantity;
+
+      console.log('Stock update:', {
+        currentQuantity,
+        transactionQuantity,
+        newQuantity
+      });
+
       if (currentStock) {
+        // Update existing stock level
         await db.prepare(`
           UPDATE stock_levels 
           SET quantity = ?, updated_at = CURRENT_TIMESTAMP
           WHERE product_id = ?
-        `).run(newQuantity, formData.product_id);
+        `).run(newQuantity, productId);
       } else {
+        // Create new stock level entry
         await db.prepare(`
           INSERT INTO stock_levels (product_id, quantity, updated_at)
           VALUES (?, ?, CURRENT_TIMESTAMP)
-        `).run(formData.product_id, newQuantity);
+        `).run(productId, newQuantity);
       }
 
       // Reload stock levels after successful operation
       await loadStockLevels();
       handleCloseModal();
+      
+      alert(`Stock ${formData.transaction_type === 'IN' ? 'IN' : 'OUT'} transaction saved successfully!`);
     } catch (error) {
       console.error('Error saving inventory:', error);
-      alert('Error saving inventory transaction.');
+      alert(`Error saving inventory transaction: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -222,11 +293,14 @@ const Inventory = () => {
               required
             >
               <option value="">Select Product</option>
-              {Array.isArray(products) && products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
+              {Array.isArray(products) && products.map((p) => {
+                const productId = p.id?.toString() || p._id?.toString() || p.id || p._id;
+                return (
+                  <option key={productId} value={productId}>
+                    {p.name}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
