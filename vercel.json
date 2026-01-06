@@ -1,6 +1,9 @@
 {
   "functions": {
-    "api/db/query.js": {
+    "api/db/mongodb.js": {
+      "maxDuration": 60
+    },
+    "api/db/mongodb-setup.js": {
       "maxDuration": 60
     }
   },
