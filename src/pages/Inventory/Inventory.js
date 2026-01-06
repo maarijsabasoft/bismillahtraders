@@ -41,14 +41,16 @@ const Inventory = () => {
 
   const loadStockLevels = async () => {
     try {
-      // Fetch products, companies, and stock levels separately (MongoDB doesn't support JOINs)
+      // Fetch products, companies, stock levels, and inventory transactions
       const productsResult = await db.prepare('SELECT * FROM products WHERE is_active = 1 ORDER BY name').all();
       const companiesResult = await db.prepare('SELECT * FROM companies').all();
       const stockLevelsResult = await db.prepare('SELECT * FROM stock_levels').all();
+      const inventoryResult = await db.prepare('SELECT product_id, quantity FROM inventory').all();
       
       const products = Array.isArray(productsResult) ? productsResult : [];
       const companies = Array.isArray(companiesResult) ? companiesResult : [];
       const stockLevels = Array.isArray(stockLevelsResult) ? stockLevelsResult : [];
+      const inventoryTransactions = Array.isArray(inventoryResult) ? inventoryResult : [];
       
       // Create maps for quick lookup
       const companyMap = {};
@@ -56,12 +58,46 @@ const Inventory = () => {
         const id = company.id?.toString() || company._id?.toString();
         if (id) {
           companyMap[id] = company.name;
+          // Also map integer version
+          const idNum = parseInt(id);
+          if (!isNaN(idNum)) {
+            companyMap[idNum] = company.name;
+            companyMap[String(idNum)] = company.name;
+          }
         }
       });
       
+      // Calculate actual stock from inventory transactions (source of truth)
+      const calculatedStock = {};
+      inventoryTransactions.forEach(transaction => {
+        const productId = transaction.product_id?.toString() || 
+                         transaction.productId?.toString() || 
+                         transaction.product_id || 
+                         transaction.productId;
+        if (productId) {
+          const idStr = String(productId);
+          const quantity = parseInt(transaction.quantity) || 0;
+          
+          if (!calculatedStock[idStr]) {
+            calculatedStock[idStr] = 0;
+          }
+          calculatedStock[idStr] += quantity;
+          
+          // Also track integer version
+          const idNum = parseInt(idStr);
+          if (!isNaN(idNum)) {
+            if (!calculatedStock[idNum]) {
+              calculatedStock[idNum] = 0;
+            }
+            calculatedStock[idNum] += quantity;
+            calculatedStock[String(idNum)] = calculatedStock[idNum];
+          }
+        }
+      });
+      
+      // Create stock map from stock_levels table (for threshold and updated_at)
       const stockMap = {};
       stockLevels.forEach(stock => {
-        // Handle multiple ID format variations
         const productId = stock.product_id?.toString() || 
                          stock.productId?.toString() || 
                          stock.product_id || 
@@ -69,7 +105,6 @@ const Inventory = () => {
         if (productId) {
           const idStr = String(productId);
           stockMap[idStr] = stock;
-          // Also map integer version
           const idNum = parseInt(idStr);
           if (!isNaN(idNum)) {
             stockMap[idNum] = stock;
@@ -83,7 +118,27 @@ const Inventory = () => {
         const productId = product.id?.toString() || product._id?.toString() || product.id || product._id;
         const companyId = product.company_id?.toString() || product.companyId?.toString() || product.company_id || product.companyId;
         
-        // Try multiple lookup strategies for stock
+        // Get calculated stock from transactions (source of truth)
+        let currentStock = calculatedStock[productId];
+        if (currentStock === undefined && productId) {
+          const idNum = parseInt(String(productId));
+          if (!isNaN(idNum)) {
+            currentStock = calculatedStock[idNum] || calculatedStock[String(idNum)];
+          }
+        }
+        // Fallback to stock_levels if no transactions found
+        if (currentStock === undefined) {
+          let stock = stockMap[productId];
+          if (!stock && productId) {
+            const idNum = parseInt(String(productId));
+            if (!isNaN(idNum)) {
+              stock = stockMap[idNum] || stockMap[String(idNum)];
+            }
+          }
+          currentStock = stock ? (parseInt(stock.quantity) || 0) : 0;
+        }
+        
+        // Get stock metadata (threshold, updated_at) from stock_levels
         let stock = stockMap[productId];
         if (!stock && productId) {
           const idNum = parseInt(String(productId));
@@ -115,7 +170,7 @@ const Inventory = () => {
           id: productId,
           product_name: product.name,
           company_name: companyName || null,
-          current_stock: stock ? (parseInt(stock.quantity) || 0) : 0,
+          current_stock: currentStock || 0,
           low_stock_threshold: stock?.low_stock_threshold || 10,
           updated_at: stock?.updated_at || null
         };
@@ -186,13 +241,37 @@ const Inventory = () => {
         newQuantity
       });
 
-      if (currentStock) {
+      // Ensure stock_levels is updated correctly
+      // Try to find existing stock level with multiple ID formats
+      let existingStock = await db.prepare('SELECT * FROM stock_levels WHERE product_id = ?').get(productId);
+      if (!existingStock) {
+        const productIdInt = parseInt(productId);
+        if (!isNaN(productIdInt)) {
+          existingStock = await db.prepare('SELECT * FROM stock_levels WHERE product_id = ?').get(productIdInt);
+        }
+      }
+
+      if (existingStock) {
         // Update existing stock level
         await db.prepare(`
           UPDATE stock_levels 
           SET quantity = ?, updated_at = CURRENT_TIMESTAMP
           WHERE product_id = ?
         `).run(newQuantity, productId);
+        
+        // Also try with integer if different
+        const productIdInt = parseInt(productId);
+        if (!isNaN(productIdInt) && String(productIdInt) !== productId) {
+          try {
+            await db.prepare(`
+              UPDATE stock_levels 
+              SET quantity = ?, updated_at = CURRENT_TIMESTAMP
+              WHERE product_id = ?
+            `).run(newQuantity, productIdInt);
+          } catch (e) {
+            // Ignore if update fails (might be same record)
+          }
+        }
       } else {
         // Create new stock level entry
         await db.prepare(`
