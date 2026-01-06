@@ -144,26 +144,48 @@ class MongoDatabaseWrapper {
             const whereMatch = sql.match(/WHERE\s+(\w+)\s*=\s*\?/i);
             
             if (setMatch) {
-              const setClause = setMatch[1];
-              const assignments = setClause.split(',').map(a => a.trim());
+              const setClause = setMatch[1].trim();
+              // Split by comma, but be careful with spaces
+              const assignments = setClause.split(',').map(a => a.trim()).filter(a => a);
               
               let paramIndex = 0;
               assignments.forEach(assign => {
-                const [col, val] = assign.split('=').map(s => s.trim());
+                const equalIndex = assign.indexOf('=');
+                if (equalIndex === -1) return;
+                
+                const col = assign.substring(0, equalIndex).trim();
+                const val = assign.substring(equalIndex + 1).trim();
+                
                 // Skip CURRENT_TIMESTAMP - will be handled by server
-                if (val === 'CURRENT_TIMESTAMP' || val === 'CURRENT_TIMESTAMP()') {
+                if (val.toUpperCase() === 'CURRENT_TIMESTAMP' || val.toUpperCase() === 'CURRENT_TIMESTAMP()') {
                   // Don't add to data, server will handle it - but don't increment paramIndex
-                } else if (flatParams[paramIndex] !== undefined) {
-                  data[col] = flatParams[paramIndex];
-                  paramIndex++;
+                  console.log('MongoDB: Skipping CURRENT_TIMESTAMP for', col);
+                } else if (val === '?') {
+                  // This is a parameter placeholder
+                  if (flatParams[paramIndex] !== undefined) {
+                    data[col] = flatParams[paramIndex];
+                    paramIndex++;
+                  }
                 }
               });
               
               // Handle WHERE clause - the WHERE parameter comes after all SET parameters
-              if (whereMatch && flatParams[paramIndex] !== undefined) {
-                // Use 'id' field for filtering (will be converted to _id ObjectId on server)
-                filter['id'] = flatParams[paramIndex];
+              if (whereMatch) {
+                const whereField = whereMatch[1];
+                if (flatParams[paramIndex] !== undefined) {
+                  // Use 'id' field for filtering (will be converted to _id ObjectId on server)
+                  filter['id'] = flatParams[paramIndex];
+                  console.log('MongoDB: UPDATE filter set to', filter);
+                } else {
+                  console.warn('MongoDB: UPDATE WHERE parameter not found at index', paramIndex, 'Params:', flatParams);
+                }
+              } else {
+                console.warn('MongoDB: UPDATE WHERE clause not found in SQL');
               }
+              
+              console.log('MongoDB: UPDATE data:', data, 'filter:', filter, 'paramIndex:', paramIndex);
+            } else {
+              console.error('MongoDB: Could not parse UPDATE SET clause from SQL:', sql);
             }
           } else if (upperSQL.startsWith('DELETE')) {
             method = 'deleteOne';
