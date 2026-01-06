@@ -47,13 +47,30 @@ const Products = () => {
 
   const loadProducts = async () => {
     try {
-      const result = await db.prepare(`
-        SELECT p.*, c.name as company_name 
-        FROM products p 
-        LEFT JOIN companies c ON CAST(p.company_id AS INTEGER) = CAST(c.id AS INTEGER)
-        ORDER BY p.created_at DESC
-      `).all();
-      setProducts(Array.isArray(result) ? result : []);
+      // Fetch products and companies separately (MongoDB doesn't support JOINs)
+      const productsResult = await db.prepare('SELECT * FROM products ORDER BY created_at DESC').all();
+      const companiesResult = await db.prepare('SELECT * FROM companies').all();
+      
+      const products = Array.isArray(productsResult) ? productsResult : [];
+      const companies = Array.isArray(companiesResult) ? companiesResult : [];
+      
+      // Create a map of company_id to company_name for quick lookup
+      const companyMap = {};
+      companies.forEach(company => {
+        // Handle both string and integer IDs
+        const id = company.id?.toString() || company._id?.toString();
+        if (id) {
+          companyMap[id] = company.name;
+        }
+      });
+      
+      // Join products with company names
+      const productsWithCompanies = products.map(product => ({
+        ...product,
+        company_name: companyMap[product.company_id?.toString()] || companyMap[product.companyId?.toString()] || null
+      }));
+      
+      setProducts(productsWithCompanies);
     } catch (error) {
       console.error('Error loading products:', error);
       setProducts([]);

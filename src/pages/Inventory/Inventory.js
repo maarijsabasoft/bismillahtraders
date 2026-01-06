@@ -41,19 +41,49 @@ const Inventory = () => {
 
   const loadStockLevels = async () => {
     try {
-      // Get all products with their stock levels
-      const products = await db.prepare(`
-        SELECT p.id, p.name as product_name, c.name as company_name,
-               COALESCE(sl.quantity, 0) as current_stock,
-               COALESCE(sl.low_stock_threshold, 10) as low_stock_threshold,
-               sl.updated_at
-        FROM products p
-        LEFT JOIN companies c ON CAST(p.company_id AS INTEGER) = CAST(c.id AS INTEGER)
-        LEFT JOIN stock_levels sl ON CAST(p.id AS INTEGER) = CAST(sl.product_id AS INTEGER)
-        WHERE p.is_active = 1
-        ORDER BY p.name
-      `).all();
-      setStockLevels(Array.isArray(products) ? products : []);
+      // Fetch products, companies, and stock levels separately (MongoDB doesn't support JOINs)
+      const productsResult = await db.prepare('SELECT * FROM products WHERE is_active = 1 ORDER BY name').all();
+      const companiesResult = await db.prepare('SELECT * FROM companies').all();
+      const stockLevelsResult = await db.prepare('SELECT * FROM stock_levels').all();
+      
+      const products = Array.isArray(productsResult) ? productsResult : [];
+      const companies = Array.isArray(companiesResult) ? companiesResult : [];
+      const stockLevels = Array.isArray(stockLevelsResult) ? stockLevelsResult : [];
+      
+      // Create maps for quick lookup
+      const companyMap = {};
+      companies.forEach(company => {
+        const id = company.id?.toString() || company._id?.toString();
+        if (id) {
+          companyMap[id] = company.name;
+        }
+      });
+      
+      const stockMap = {};
+      stockLevels.forEach(stock => {
+        const productId = stock.product_id?.toString() || stock.productId?.toString();
+        if (productId) {
+          stockMap[productId] = stock;
+        }
+      });
+      
+      // Join products with company names and stock levels
+      const productsWithData = products.map(product => {
+        const productId = product.id?.toString() || product._id?.toString();
+        const companyId = product.company_id?.toString() || product.companyId?.toString();
+        const stock = stockMap[productId];
+        
+        return {
+          id: productId,
+          product_name: product.name,
+          company_name: companyMap[companyId] || null,
+          current_stock: stock?.quantity || 0,
+          low_stock_threshold: stock?.low_stock_threshold || 10,
+          updated_at: stock?.updated_at || null
+        };
+      });
+      
+      setStockLevels(productsWithData);
     } catch (error) {
       console.error('Error loading stock levels:', error);
       setStockLevels([]);
