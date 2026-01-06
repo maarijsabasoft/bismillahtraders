@@ -1,0 +1,12 @@
+{
+  "functions": {
+    "api/db/query.js": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "ADMIN_USERNAME": "admin",
+    "ADMIN_PASSWORD": "admin123"
+  }
+}
+
