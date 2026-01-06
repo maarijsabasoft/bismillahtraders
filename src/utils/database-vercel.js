@@ -14,6 +14,28 @@ function getApiUrl() {
 }
 
 const API_BASE_URL = getApiUrl();
+const FETCH_TIMEOUT = 60000; // 60 seconds timeout
+
+// Fetch with timeout helper
+async function fetchWithTimeout(url, options, timeout = FETCH_TIMEOUT) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout: The server took too long to respond');
+    }
+    throw error;
+  }
+}
 
 // Get auth token from localStorage
 function getAuthToken() {
@@ -68,7 +90,7 @@ class VercelDatabaseWrapper {
 
           console.log('Vercel DB: Making request to', API_BASE_URL, requestBody);
 
-          const response = await fetch(API_BASE_URL, {
+          const response = await fetchWithTimeout(API_BASE_URL, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -86,6 +108,12 @@ class VercelDatabaseWrapper {
               error = { message: errorText || `HTTP ${response.status}` };
             }
             console.error('Vercel DB: API error', response.status, error);
+            
+            // Handle timeout errors specifically
+            if (response.status === 504 || response.status === 408) {
+              throw new Error('Database operation timed out. The server may be slow or the database is too large. Please try again or contact support.');
+            }
+            
             throw new Error(error.message || error.error || 'Database operation failed');
           }
 
@@ -104,7 +132,7 @@ class VercelDatabaseWrapper {
             throw new Error('Not authenticated');
           }
 
-          const response = await fetch(API_BASE_URL, {
+          const response = await fetchWithTimeout(API_BASE_URL, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -118,13 +146,30 @@ class VercelDatabaseWrapper {
           });
 
           if (!response.ok) {
-            const error = await response.json();
+            let error;
+            try {
+              error = await response.json();
+            } catch {
+              error = { message: `HTTP ${response.status}` };
+            }
+            
+            // Handle timeout errors
+            if (response.status === 504 || response.status === 408) {
+              console.error('Database get timeout:', sql, params);
+              return null;
+            }
+            
             throw new Error(error.message || 'Database operation failed');
           }
 
           const result = await response.json();
           return result.data;
         } catch (error) {
+          // Handle network errors and timeouts gracefully for get operations
+          if (error.message.includes('timeout') || error.message.includes('Failed to fetch')) {
+            console.error('Database get error (timeout/network):', error.message, sql, params);
+            return null;
+          }
           console.error('Database get error:', error, sql, params);
           return null;
         }
@@ -136,7 +181,7 @@ class VercelDatabaseWrapper {
             throw new Error('Not authenticated');
           }
 
-          const response = await fetch(API_BASE_URL, {
+          const response = await fetchWithTimeout(API_BASE_URL, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -150,13 +195,30 @@ class VercelDatabaseWrapper {
           });
 
           if (!response.ok) {
-            const error = await response.json();
+            let error;
+            try {
+              error = await response.json();
+            } catch {
+              error = { message: `HTTP ${response.status}` };
+            }
+            
+            // Handle timeout errors
+            if (response.status === 504 || response.status === 408) {
+              console.error('Database all timeout:', sql, params);
+              return [];
+            }
+            
             throw new Error(error.message || 'Database operation failed');
           }
 
           const result = await response.json();
           return result.data || [];
         } catch (error) {
+          // Handle network errors and timeouts gracefully for all operations
+          if (error.message.includes('timeout') || error.message.includes('Failed to fetch')) {
+            console.error('Database all error (timeout/network):', error.message, sql, params);
+            return [];
+          }
           console.error('Database all error:', error, sql, params);
           return [];
         }

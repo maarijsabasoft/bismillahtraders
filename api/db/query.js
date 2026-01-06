@@ -9,14 +9,24 @@ const DB_BLOB_KEY = 'bismillah_traders.db';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
-// Helper to download WASM file for sql.js
+// Helper to download WASM file for sql.js with timeout
 async function downloadWasm() {
   return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('WASM download timeout'));
+    }, 10000); // 10 second timeout
+
     https.get('https://sql.js.org/dist/sql-wasm.wasm', (response) => {
       const chunks = [];
       response.on('data', (chunk) => chunks.push(chunk));
-      response.on('end', () => resolve(Buffer.concat(chunks)));
-      response.on('error', reject);
+      response.on('end', () => {
+        clearTimeout(timeout);
+        resolve(Buffer.concat(chunks));
+      });
+      response.on('error', (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
     });
   });
 }
@@ -34,7 +44,7 @@ function verifyAuth(req) {
   return username === ADMIN_USERNAME && password === ADMIN_PASSWORD;
 }
 
-// Load database from blob storage
+// Load database from blob storage with timeout
 async function loadDatabase() {
   try {
     const token = process.env.BLOB_READ_WRITE_TOKEN;
@@ -42,19 +52,32 @@ async function loadDatabase() {
       throw new Error('BLOB_READ_WRITE_TOKEN not configured');
     }
     
-    const blob = await get(DB_BLOB_KEY, {
+    // Add timeout to blob get operation
+    const blobPromise = get(DB_BLOB_KEY, {
       token: token,
     });
     
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Blob load timeout')), 15000)
+    );
+    
+    const blob = await Promise.race([blobPromise, timeoutPromise]);
+    
     if (blob) {
-      const response = await fetch(blob.url);
+      // Add timeout to fetch operation
+      const fetchPromise = fetch(blob.url);
+      const fetchTimeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database fetch timeout')), 15000)
+      );
+      
+      const response = await Promise.race([fetchPromise, fetchTimeoutPromise]);
       const arrayBuffer = await response.arrayBuffer();
       return new Uint8Array(arrayBuffer);
     }
   } catch (error) {
     // Database doesn't exist yet, will create new one
-    if (error.message.includes('not found') || error.statusCode === 404) {
-      console.log('Database not found, will create new');
+    if (error.message.includes('not found') || error.statusCode === 404 || error.message.includes('timeout')) {
+      console.log('Database not found or timeout, will create new');
     } else {
       console.error('Error loading database:', error.message);
     }
@@ -62,7 +85,7 @@ async function loadDatabase() {
   return null;
 }
 
-// Save database to blob storage
+// Save database to blob storage with timeout
 async function saveDatabase(db) {
   try {
     const token = process.env.BLOB_READ_WRITE_TOKEN;
@@ -73,11 +96,18 @@ async function saveDatabase(db) {
     const data = db.export();
     const buffer = Buffer.from(data);
     
-    const blob = await put(DB_BLOB_KEY, buffer, {
+    // Add timeout to blob put operation
+    const putPromise = put(DB_BLOB_KEY, buffer, {
       access: 'public',
       contentType: 'application/octet-stream',
       token: token,
     });
+    
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Blob save timeout')), 20000)
+    );
+    
+    await Promise.race([putPromise, timeoutPromise]);
     
     console.log('Database saved to blob storage');
     return true;
@@ -288,12 +318,21 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized. Admin credentials required.' });
   }
 
+  // Set a maximum execution time (Vercel has 10s for Hobby, 60s for Pro)
+  const startTime = Date.now();
+  const MAX_EXECUTION_TIME = 50000; // 50 seconds to leave buffer
+
   try {
-    // Initialize sql.js
+    // Initialize sql.js with timeout
     const wasmBuffer = await downloadWasm();
     const SQL = await initSqlJs({
       locateFile: () => wasmBuffer,
     });
+
+    // Check timeout
+    if (Date.now() - startTime > MAX_EXECUTION_TIME) {
+      throw new Error('Operation timeout: Initialization took too long');
+    }
 
     // Load or create database
     let dbData = await loadDatabase();
@@ -309,10 +348,12 @@ export default async function handler(req, res) {
     const { method, sql, params = [] } = req.body;
 
     if (!method || !sql) {
+      db.close();
       return res.status(400).json({ error: 'Method and SQL query required' });
     }
 
     let result;
+    let needsSave = false;
 
     switch (method) {
       case 'run':
@@ -331,9 +372,7 @@ export default async function handler(req, res) {
             : null;
 
           result = { lastInsertRowid, changes: 1 };
-          
-          // Save database
-          await saveDatabase(db);
+          needsSave = true;
         }
         break;
 
@@ -389,7 +428,18 @@ export default async function handler(req, res) {
         break;
 
       default:
+        db.close();
         return res.status(400).json({ error: 'Invalid method. Use run, get, or all' });
+    }
+
+    // Only save on write operations to improve performance
+    if (needsSave) {
+      // Check timeout before saving
+      if (Date.now() - startTime > MAX_EXECUTION_TIME) {
+        db.close();
+        throw new Error('Operation timeout: Save operation would exceed time limit');
+      }
+      await saveDatabase(db);
     }
 
     db.close();
@@ -397,9 +447,16 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, data: result });
   } catch (error) {
     console.error('Database error:', error);
+    
+    // Provide more helpful error messages
+    let errorMessage = error.message || 'Database operation failed';
+    if (errorMessage.includes('timeout') || errorMessage.includes('TIMEOUT')) {
+      errorMessage = 'Database operation timed out. The database may be too large or the connection is slow. Consider using a dedicated database service.';
+    }
+    
     return res.status(500).json({ 
       error: 'Database operation failed', 
-      message: error.message 
+      message: errorMessage 
     });
   }
 }
