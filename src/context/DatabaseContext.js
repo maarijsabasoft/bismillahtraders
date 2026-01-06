@@ -22,11 +22,16 @@ function isElectron() {
          (window.require('electron') || window.process?.type === 'renderer');
 }
 
-// Check if we should use Vercel database
+// Check if we should use Vercel database (MongoDB)
 function shouldUseVercelDB() {
   if (typeof window === 'undefined') return false;
   
-  // Check environment variable first
+  // Force MongoDB if environment variable is set
+  if (process.env.REACT_APP_USE_MONGODB === 'true') {
+    return true;
+  }
+  
+  // Check environment variable for any Vercel DB
   if (process.env.REACT_APP_USE_VERCEL_DB === 'true') {
     return true;
   }

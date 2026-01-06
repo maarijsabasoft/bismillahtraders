@@ -150,11 +150,23 @@ export default async function handler(req, res) {
             updated_at: data.updated_at || new Date().toISOString(),
           };
           
-          console.log('MongoDB: updateOne - filter:', mongoFilter, 'data:', updateData);
+          console.log('MongoDB: updateOne - filter:', JSON.stringify(mongoFilter, null, 2), 'data:', updateData);
           
-          const updateResult = await coll.updateOne(mongoFilter, { $set: updateData }, options);
+          // Try update with _id first
+          let updateResult = await coll.updateOne(mongoFilter, { $set: updateData }, options);
+          
+          // If no match and filter has both _id and id, try with just _id
+          if (updateResult.matchedCount === 0 && mongoFilter._id && mongoFilter.id) {
+            console.log('MongoDB: No match with both _id and id, trying with just _id');
+            const filterWithJustId = { _id: mongoFilter._id };
+            updateResult = await coll.updateOne(filterWithJustId, { $set: updateData }, options);
+          }
           
           console.log('MongoDB: updateOne result - matched:', updateResult.matchedCount, 'modified:', updateResult.modifiedCount);
+          
+          if (updateResult.matchedCount === 0) {
+            console.warn('MongoDB: No document matched the filter. Filter was:', JSON.stringify(mongoFilter, null, 2));
+          }
           
           result = {
             changes: updateResult.modifiedCount,
@@ -233,28 +245,29 @@ function convertFilterToMongo(filter) {
   const mongoFilter = { ...filter };
   
   // If filter has 'id' field, convert it to '_id' ObjectId
-  if (mongoFilter.id !== undefined) {
+  if (mongoFilter.id !== undefined && !mongoFilter._id) {
     try {
       const idValue = mongoFilter.id;
       // Try to convert string id to ObjectId
       if (ObjectId.isValid(idValue)) {
         mongoFilter._id = new ObjectId(idValue);
         delete mongoFilter.id;
-        console.log('MongoDB: Converted id to ObjectId:', idValue, '->', mongoFilter._id);
+        console.log('MongoDB: Converted id to ObjectId:', idValue, '->', mongoFilter._id.toString());
       } else {
-        // If not a valid ObjectId, try as string match (fallback)
-        console.warn('MongoDB: id is not a valid ObjectId, using as string:', idValue);
+        // If not a valid ObjectId, keep id as string for fallback search
+        console.warn('MongoDB: id is not a valid ObjectId format:', idValue);
+        // Keep both id and _id for fallback
         mongoFilter._id = idValue;
-        delete mongoFilter.id;
       }
     } catch (error) {
-      // If conversion fails, try string match
-      console.warn('MongoDB: Could not convert id to ObjectId, using as string:', mongoFilter.id, error);
+      // If conversion fails, use as string
+      console.warn('MongoDB: Could not convert id to ObjectId:', mongoFilter.id, error);
       mongoFilter._id = mongoFilter.id;
       delete mongoFilter.id;
     }
   }
   
+  console.log('MongoDB: Final filter after conversion:', JSON.stringify(mongoFilter, null, 2));
   return mongoFilter;
 }
 

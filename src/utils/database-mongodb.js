@@ -140,12 +140,13 @@ class MongoDatabaseWrapper {
           } else if (upperSQL.startsWith('UPDATE')) {
             method = 'updateOne';
             // Parse UPDATE table SET col1 = ?, col2 = ? WHERE id = ?
-            const setMatch = sql.match(/SET\s+([^WHERE]+)/i);
+            // Use multiline regex to handle SQL with newlines
+            const setMatch = sql.match(/SET\s+([\s\S]*?)\s+WHERE/i) || sql.match(/SET\s+([\s\S]+)/i);
             const whereMatch = sql.match(/WHERE\s+(\w+)\s*=\s*\?/i);
             
             if (setMatch) {
               const setClause = setMatch[1].trim();
-              // Split by comma, but be careful with spaces
+              // Split by comma, but be careful with spaces and newlines
               const assignments = setClause.split(',').map(a => a.trim()).filter(a => a);
               
               let paramIndex = 0;
@@ -175,15 +176,15 @@ class MongoDatabaseWrapper {
                 if (flatParams[paramIndex] !== undefined) {
                   // Use 'id' field for filtering (will be converted to _id ObjectId on server)
                   filter['id'] = flatParams[paramIndex];
-                  console.log('MongoDB: UPDATE filter set to', filter);
+                  console.log('MongoDB: UPDATE filter set to', filter, 'from param index', paramIndex, 'value:', flatParams[paramIndex]);
                 } else {
-                  console.warn('MongoDB: UPDATE WHERE parameter not found at index', paramIndex, 'Params:', flatParams);
+                  console.error('MongoDB: UPDATE WHERE parameter not found at index', paramIndex, 'Total params:', flatParams.length, 'Params:', flatParams);
                 }
               } else {
-                console.warn('MongoDB: UPDATE WHERE clause not found in SQL');
+                console.error('MongoDB: UPDATE WHERE clause not found in SQL:', sql);
               }
               
-              console.log('MongoDB: UPDATE data:', data, 'filter:', filter, 'paramIndex:', paramIndex);
+              console.log('MongoDB: UPDATE parsed - data:', data, 'filter:', filter, 'paramIndex:', paramIndex, 'totalParams:', flatParams.length);
             } else {
               console.error('MongoDB: Could not parse UPDATE SET clause from SQL:', sql);
             }
