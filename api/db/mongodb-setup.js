@@ -3,13 +3,20 @@
 
 import { MongoClient } from 'mongodb';
 import { verifyAuth } from './auth';
-import { getMongoUri, getResolvedMongoDbName } from './mongo-env.js';
+import { getMongoUri, getResolvedMongoDbName, getMongoDriverTimeouts } from './mongo-env.js';
 
 async function getDatabase() {
   const uri = getMongoUri();
   const dbName = getResolvedMongoDbName(uri);
+  const { serverSelectionTimeoutMS, connectTimeoutMS, socketTimeoutMS } = getMongoDriverTimeouts();
 
-  const client = new MongoClient(uri);
+  const client = new MongoClient(uri, {
+    serverSelectionTimeoutMS,
+    connectTimeoutMS,
+    socketTimeoutMS,
+    retryWrites: true,
+    family: 4,
+  });
   await client.connect();
   const db = client.db(dbName);
 

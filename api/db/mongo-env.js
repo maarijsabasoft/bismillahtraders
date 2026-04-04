@@ -21,3 +21,19 @@ export function getResolvedMongoDbName(uri) {
   if (match && match[2]) return match[2];
   return getMongoDbNameFromEnv();
 }
+
+function isVercelServerless() {
+  return process.env.VERCEL === '1';
+}
+
+/**
+ * Driver timeouts for serverless: Vercel Hobby ~10s function cap — long serverSelection waits → 504.
+ * Override with MONGODB_SERVER_SELECTION_MS, MONGODB_CONNECT_MS, MONGODB_SOCKET_MS.
+ */
+export function getMongoDriverTimeouts() {
+  const onVercel = isVercelServerless();
+  const serverSelectionTimeoutMS = Number(process.env.MONGODB_SERVER_SELECTION_MS) || (onVercel ? 7000 : 45000);
+  const connectTimeoutMS = Number(process.env.MONGODB_CONNECT_MS) || (onVercel ? 7000 : 45000);
+  const socketTimeoutMS = Number(process.env.MONGODB_SOCKET_MS) || (onVercel ? 10000 : 60000);
+  return { serverSelectionTimeoutMS, connectTimeoutMS, socketTimeoutMS };
+}

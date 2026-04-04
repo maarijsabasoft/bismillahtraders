@@ -3,27 +3,29 @@
 
 import { MongoClient, ObjectId } from 'mongodb';
 import { verifyAuth } from './auth';
-import { getMongoUri, getResolvedMongoDbName } from './mongo-env.js';
+import { getMongoUri, getResolvedMongoDbName, getMongoDriverTimeouts } from './mongo-env.js';
 
 // MongoDB connection — single in-flight connect so parallel API calls (dashboard load) don't stack connects
 let cachedClient = null;
 let cachedDb = null;
 let connectPromise = null;
 
-function isRetryableMongoError(err) {
+/** Retry only quick transient handshake/pool errors — not server-selection timeouts (would double wait vs Vercel limit). */
+function isMongoHandshakeRetryError(err) {
   const m = err && err.message ? err.message : String(err);
+  if (m.includes('Server selection timed out')) return false;
+  if (m.includes('wait queue timed out')) return false;
+  if (m.includes('ETIMEDOUT') && !m.includes('SSL') && !m.includes('TLS')) return false;
   return (
     m.includes('SSL') ||
     m.includes('TLS') ||
     m.includes('tlsv1 alert') ||
     m.includes('alert number 80') ||
     m.includes('ECONNRESET') ||
-    m.includes('ETIMEDOUT') ||
     m.includes('ENOTFOUND') ||
     m.includes('PoolCleared') ||
-    m.includes('pool') ||
-    m.includes('socket') ||
-    m.includes('network error')
+    m.includes('MongoNetworkError') ||
+    (m.includes('network error') && !m.includes('timed out'))
   );
 }
 
@@ -50,13 +52,14 @@ async function getMongoClient() {
     connectPromise = (async () => {
       const uri = getMongoUri();
       const dbName = getResolvedMongoDbName(uri);
+      const { serverSelectionTimeoutMS, connectTimeoutMS, socketTimeoutMS } = getMongoDriverTimeouts();
       const client = new MongoClient(uri, {
         maxPoolSize: 5,
         minPoolSize: 0,
         maxIdleTimeMS: 20000,
-        serverSelectionTimeoutMS: 45000,
-        connectTimeoutMS: 45000,
-        socketTimeoutMS: 60000,
+        serverSelectionTimeoutMS,
+        connectTimeoutMS,
+        socketTimeoutMS,
         retryWrites: true,
         // Prefer IPv4 — avoids some Atlas + serverless TLS handshake failures
         family: 4,
@@ -279,7 +282,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ success: true, data: result });
       } catch (error) {
-        if (attempt === 0 && isRetryableMongoError(error)) {
+        if (attempt === 0 && isMongoHandshakeRetryError(error)) {
           console.warn('MongoDB: transient error, resetting connection and retrying once:', error.message);
           await resetMongoConnection();
           continue;
