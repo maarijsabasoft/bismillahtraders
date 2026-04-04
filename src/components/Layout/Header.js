@@ -11,7 +11,7 @@ const Header = ({ onMenuClick }) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/landing');
+    navigate('/');
   };
 
   return (
@@ -21,7 +21,7 @@ const Header = ({ onMenuClick }) => {
           <button className="hamburger-btn" onClick={onMenuClick} aria-label="Toggle menu">
             <FiMenu />
           </button>
-          <h2 className="header-title">BeverageHub</h2>
+          <h2 className="header-title">Bismillah Traders</h2>
         </div>
         <div className="header-actions">
           <span className="header-date">

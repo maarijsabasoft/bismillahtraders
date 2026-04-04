@@ -3,6 +3,7 @@
 
 import { MongoClient, ObjectId } from 'mongodb';
 import { verifyAuth } from './auth';
+import { getMongoUri, getResolvedMongoDbName } from './mongo-env.js';
 
 // MongoDB connection
 let cachedClient = null;
@@ -13,32 +14,14 @@ async function getMongoClient() {
     return cachedClient;
   }
 
-  let uri = process.env.MONGODB_URI;
-  if (!uri) {
-    throw new Error('MONGODB_URI environment variable is not set');
-  }
-
-  // Extract database name from URI if present, otherwise use env variable
-  let dbName = process.env.MONGODB_DB_NAME || 'bismillah_traders';
-  
-  // Check if database name is already in URI
-  const dbNameMatch = uri.match(/mongodb\+srv:\/\/[^/]+\/([^?]+)/);
-  if (dbNameMatch) {
-    dbName = dbNameMatch[1];
-  } else {
-    // Add database name to URI if not present
-    if (uri.includes('?')) {
-      uri = uri.replace('?', `/${dbName}?`);
-    } else {
-      uri = uri + `/${dbName}`;
-    }
-  }
+  const uri = getMongoUri();
+  const dbName = getResolvedMongoDbName(uri);
 
   const client = new MongoClient(uri);
   await client.connect();
   cachedClient = client;
   cachedDb = client.db(dbName);
-  
+
   return client;
 }
 
@@ -84,6 +67,11 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized. Admin credentials required.' });
   }
 
+  // Never serve stale DB reads from browser or CDN after deploy/restart
+  res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
   try {
     const db = await getDatabase();
     const { method, collection, operation, filter = {}, data = {}, options = {} } = req.body;
@@ -101,14 +89,22 @@ export default async function handler(req, res) {
     switch (method) {
       case 'insertOne':
         {
-          // Add created_at and updated_at if not present
           const now = new Date().toISOString();
           const insertData = {
             ...data,
             created_at: data.created_at || now,
             updated_at: data.updated_at || now,
           };
-          
+          const payloadKeys = Object.keys(data || {}).filter(
+            (k) => k !== 'created_at' && k !== 'updated_at'
+          );
+          if (payloadKeys.length === 0) {
+            return res.status(400).json({
+              error: 'Empty insert',
+              message: 'Client sent insertOne with no business fields. Check Mongo SQL-to-JSON parsing.',
+            });
+          }
+
           const insertResult = await coll.insertOne(insertData);
           result = {
             lastInsertRowid: insertResult.insertedId.toString(),
@@ -236,7 +232,7 @@ export default async function handler(req, res) {
   }
 }
 
-// Convert filter with 'id' field to MongoDB '_id' ObjectId
+// Convert filter with 'id' field to MongoDB '_id' ObjectId (other keys like product_id pass through as-is)
 function convertFilterToMongo(filter) {
   if (!filter || typeof filter !== 'object') {
     return filter;
@@ -244,7 +240,6 @@ function convertFilterToMongo(filter) {
   
   const mongoFilter = { ...filter };
   
-  // If filter has 'id' field, convert it to '_id' ObjectId
   if (mongoFilter.id !== undefined && !mongoFilter._id) {
     try {
       const idValue = mongoFilter.id;

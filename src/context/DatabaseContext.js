@@ -85,8 +85,10 @@ export const DatabaseProvider = ({ children }) => {
           }
           
           // If MongoDB fails, show error instead of falling back
-          console.error('❌ MongoDB initialization failed. Please check MONGODB_URI environment variable.');
-          alert('Database connection failed. Please check your MongoDB configuration.');
+          console.error(
+            '❌ MongoDB initialization failed. On Vercel, set MONGODB_URI (and optional MONGODB_DB_NAME) in Project → Settings → Environment Variables. Locally use `npm run dev:vercel` with MONGODB_URI in .env.'
+          );
+          alert('Database connection failed. Check server env MONGODB_URI and that the API (/api/db/mongodb) is reachable.');
         }
         
         // Fallback to local database (Electron/IndexedDB)

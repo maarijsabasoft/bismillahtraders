@@ -67,12 +67,12 @@ const Dashboard = () => {
   }, [db, isReady]);
 
   const statCards = [
-    { label: "Today's Sales", value: `Rs. ${stats.todaySales.toLocaleString()}`, color: '#667eea' },
-    { label: 'Total Sales', value: `Rs. ${stats.totalSales.toLocaleString()}`, color: '#388e3c' },
-    { label: 'Total Customers', value: stats.totalCustomers.toString(), color: '#f57c00' },
-    { label: 'Total Products', value: stats.totalProducts.toString(), color: '#7b1fa2' },
-    { label: 'Low Stock Items', value: stats.lowStock.toString(), color: '#d32f2f' },
-    { label: 'Outstanding Balance', value: `Rs. ${stats.outstandingBalance.toLocaleString()}`, color: '#c2185b' },
+    { label: "Today's Sales", value: `Rs. ${stats.todaySales.toLocaleString()}`, color: '#123056' },
+    { label: 'Total Sales', value: `Rs. ${stats.totalSales.toLocaleString()}`, color: '#15803d' },
+    { label: 'Total Customers', value: stats.totalCustomers.toString(), color: '#b45309' },
+    { label: 'Total Products', value: stats.totalProducts.toString(), color: '#b8892a' },
+    { label: 'Low Stock Items', value: stats.lowStock.toString(), color: '#b91c1c' },
+    { label: 'Outstanding Balance', value: `Rs. ${stats.outstandingBalance.toLocaleString()}`, color: '#9d174d' },
   ];
 
   return (

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getAdminUsername, getAdminPassword } from '../utils/authCredentials';
 
 const AuthContext = createContext();
 
@@ -9,10 +10,6 @@ export const useAuth = () => {
   }
   return context;
 };
-
-// Default admin credentials
-const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = 'admin123';
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -28,8 +25,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (username, password) => {
-    // Simple authentication check
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    if (username === getAdminUsername() && password === getAdminPassword()) {
       setIsAuthenticated(true);
       localStorage.setItem('isAuthenticated', 'true');
       return true;

@@ -1,4 +1,4 @@
-// Shared authentication helper
+// Shared authentication helper (must match REACT_APP_ADMIN_USERNAME / REACT_APP_ADMIN_PASSWORD in the built app)
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';

@@ -3,17 +3,16 @@
 
 import { MongoClient } from 'mongodb';
 import { verifyAuth } from './auth';
+import { getMongoUri, getResolvedMongoDbName } from './mongo-env.js';
 
 async function getDatabase() {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    throw new Error('MONGODB_URI environment variable is not set');
-  }
+  const uri = getMongoUri();
+  const dbName = getResolvedMongoDbName(uri);
 
   const client = new MongoClient(uri);
   await client.connect();
-  const db = client.db(process.env.MONGODB_DB_NAME || 'bismillah_traders');
-  
+  const db = client.db(dbName);
+
   return { db, client };
 }
 
@@ -26,6 +25,10 @@ export default async function handler(req, res) {
   if (!verifyAuth(req)) {
     return res.status(401).json({ error: 'Unauthorized. Admin credentials required.' });
   }
+
+  res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 
   let client = null;
 

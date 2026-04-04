@@ -1,6 +1,21 @@
 const webpack = require('webpack');
 
 module.exports = function override(config, env) {
+  // Proxy /api → Vercel dev (or another backend) when using `npm start` + separate API port.
+  // Example .env: DEV_API_PROXY=http://localhost:3000
+  if (env === 'development' && process.env.DEV_API_PROXY) {
+    config.devServer = {
+      ...(config.devServer || {}),
+      proxy: [
+        {
+          context: ['/api'],
+          target: process.env.DEV_API_PROXY,
+          changeOrigin: true,
+        },
+      ],
+    };
+  }
+
   // Ensure resolve exists
   if (!config.resolve) {
     config.resolve = {};

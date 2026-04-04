@@ -1,8 +1,8 @@
 .btn {
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.2s;
   display: inline-flex;
   align-items: center;
@@ -31,75 +31,58 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--lp-navy);
   color: #ffffff;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 14px rgba(var(--lp-navy-rgb), 0.28);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-  transform: translateY(-2px);
+  background: var(--lp-navy-mid);
+  box-shadow: 0 6px 18px rgba(var(--lp-navy-rgb), 0.35);
+  transform: translateY(-1px);
 }
 
 .btn-secondary {
-  background-color: #ffffff;
-  color: #333;
-  border: 1px solid #e0e0e0;
+  background-color: var(--lp-surface);
+  color: var(--lp-navy);
+  border: 1px solid var(--lp-line);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: #f5f5f5;
+  background-color: var(--lp-cream);
+  border-color: rgba(var(--lp-navy-rgb), 0.2);
 }
 
 .btn-danger {
-  background-color: #d32f2f;
+  background-color: #b91c1c;
   color: #ffffff;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background-color: #c62828;
+  background-color: #991b1b;
 }
 
 .btn-success {
-  background-color: #388e3c;
+  background-color: #15803d;
   color: #ffffff;
 }
 
 .btn-success:hover:not(:disabled) {
-  background-color: #2e7d32;
+  background-color: #166534;
 }
 
-/* Login to Dashboard button style - gradient purple */
 .btn-login-dashboard {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: var(--lp-navy) !important;
   color: #ffffff !important;
   border: none !important;
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4) !important;
-  transition: all 0.3s ease !important;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-login-dashboard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s ease;
-}
-
-.btn-login-dashboard:hover::before {
-  left: 100%;
+  box-shadow: 0 8px 22px rgba(var(--lp-navy-rgb), 0.3) !important;
+  transition: all 0.2s ease !important;
 }
 
 .btn-login-dashboard:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5) !important;
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(var(--lp-navy-rgb), 0.36) !important;
+  background: var(--lp-navy-mid) !important;
 }
 
 .btn-login-dashboard:disabled {
@@ -123,4 +106,3 @@
     font-size: 14px;
   }
 }
-

@@ -201,7 +201,19 @@ const Inventory = () => {
         quantity: transactionQuantity
       });
 
-      // Insert inventory transaction
+      // Stock from existing transactions only (before this row is inserted)
+      const priorTransactions = await db.prepare('SELECT quantity FROM inventory WHERE product_id = ?').all(productId);
+      let currentQuantity = 0;
+      if (Array.isArray(priorTransactions) && priorTransactions.length > 0) {
+        currentQuantity = priorTransactions.reduce((sum, t) => sum + (parseInt(t.quantity, 10) || 0), 0);
+      }
+
+      const newQuantity = currentQuantity + transactionQuantity;
+      if (newQuantity < 0) {
+        alert(`Insufficient stock! Current stock: ${currentQuantity}, cannot reduce by ${quantity}`);
+        return;
+      }
+
       await db.prepare(`
         INSERT INTO inventory 
         (product_id, transaction_type, quantity, batch_number, expiry_date, notes)
@@ -214,28 +226,6 @@ const Inventory = () => {
         formData.expiry_date || null,
         formData.notes || null
       );
-
-      // Get current stock level - calculate from inventory transactions (source of truth)
-      // Default to 0 if no transactions exist
-      const allTransactions = await db.prepare('SELECT quantity FROM inventory WHERE product_id = ?').all(productId);
-      let currentQuantity = 0;
-      
-      if (Array.isArray(allTransactions) && allTransactions.length > 0) {
-        // Sum all transaction quantities to get current stock
-        currentQuantity = allTransactions.reduce((sum, t) => {
-          const qty = parseInt(t.quantity) || 0;
-          return sum + qty;
-        }, 0);
-      }
-      
-      // Calculate new quantity after this transaction
-      const newQuantity = currentQuantity + transactionQuantity;
-      
-      // Ensure new quantity is not negative for OUT transactions
-      if (newQuantity < 0) {
-        alert(`Insufficient stock! Current stock: ${currentQuantity}, cannot reduce by ${quantity}`);
-        return;
-      }
 
       console.log('Stock update:', {
         currentQuantity,

@@ -9,8 +9,40 @@ import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
 import { formatDate } from '../../utils/dateUtils';
 import './Companies.css';
 
+function companySaveErrorMessage(error, dbMode) {
+  const msg = (error && error.message) ? error.message : String(error);
+  const lower = msg.toLowerCase();
+  if (
+    lower.includes('e11000') ||
+    lower.includes('duplicate') ||
+    lower.includes('unique') ||
+    lower.includes('constraint failed')
+  ) {
+    return 'A company with this name already exists. Use a different name.';
+  }
+  if (lower.includes('401') || lower.includes('unauthorized') || lower.includes('not authenticated')) {
+    return 'Sign in again, and ensure REACT_APP_ADMIN_* matches ADMIN_* on the server (Vercel env).';
+  }
+  if (
+    lower.includes('404') ||
+    lower.includes('not found') ||
+    lower.includes('failed to fetch') ||
+    lower.includes('unexpected token') ||
+    lower.includes('mongodb api not found')
+  ) {
+    if (dbMode === 'mongodb') {
+      return 'Mongo API is not reachable at /api/db/mongodb. On localhost run: npm run dev:vercel — or use npm start with DEV_API_PROXY pointing at your API port.';
+    }
+    return 'Could not reach the database API. Check your network and dev setup.';
+  }
+  if (lower.includes('empty insert') || lower.includes('parse failed')) {
+    return `Database client error: ${msg}`;
+  }
+  return msg.length > 200 ? `${msg.slice(0, 200)}…` : msg;
+}
+
 const Companies = () => {
-  const { db, isReady } = useDatabase();
+  const { db, isReady, dbMode } = useDatabase();
   const [companies, setCompanies] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
@@ -51,7 +83,7 @@ const Companies = () => {
       handleCloseModal();
     } catch (error) {
       console.error('Error saving company:', error);
-      alert('Error saving company. It may already exist.');
+      alert(`Could not save company.\n\n${companySaveErrorMessage(error, dbMode)}`);
     }
   };
 

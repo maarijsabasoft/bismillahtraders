@@ -6,38 +6,38 @@
 
 .input-label {
   font-size: 14px;
-  font-weight: 500;
-  color: #333;
+  font-weight: 600;
+  color: var(--lp-ink);
 }
 
 .input-required {
-  color: #d32f2f;
+  color: #b91c1c;
   margin-left: 4px;
 }
 
 .input {
   padding: 10px 12px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  border: 1px solid var(--lp-line);
+  border-radius: 8px;
   font-size: 14px;
-  color: #333;
-  background-color: #ffffff;
-  transition: border-color 0.2s;
+  color: var(--lp-ink);
+  background-color: var(--lp-surface);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: var(--lp-navy);
+  box-shadow: 0 0 0 3px rgba(var(--lp-navy-rgb), 0.12);
 }
 
 .input-error {
-  border-color: #d32f2f;
+  border-color: #b91c1c;
 }
 
 .input-error-message {
   font-size: 12px;
-  color: #d32f2f;
+  color: #b91c1c;
 }
 
 @media (max-width: 480px) {
@@ -46,8 +46,7 @@
   }
 
   .input {
-    font-size: 16px; /* Prevents zoom on iOS */
+    font-size: 16px;
     padding: 12px;
   }
 }
-

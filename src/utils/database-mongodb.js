@@ -1,6 +1,8 @@
 // Database wrapper for MongoDB Atlas
 // Fast, reliable, no timeouts - perfect for web applications
 
+import { getAdminUsername, getAdminPassword } from './authCredentials';
+
 // Get API URL
 function getApiUrl() {
   if (process.env.REACT_APP_API_URL) {
@@ -19,6 +21,7 @@ async function fetchWithTimeout(url, options, timeout = FETCH_TIMEOUT) {
 
   try {
     const response = await fetch(url, {
+      cache: 'no-store',
       ...options,
       signal: controller.signal,
     });
@@ -37,9 +40,14 @@ async function fetchWithTimeout(url, options, timeout = FETCH_TIMEOUT) {
 function getAuthToken() {
   const isAuthenticated = localStorage.getItem('isAuthenticated');
   if (isAuthenticated === 'true') {
-    const username = process.env.REACT_APP_ADMIN_USERNAME || 'admin';
-    const password = process.env.REACT_APP_ADMIN_PASSWORD || 'admin123';
-    return btoa(`${username}:${password}`);
+    const u = getAdminUsername();
+    const p = getAdminPassword();
+    try {
+      return btoa(`${u}:${p}`);
+    } catch (e) {
+      console.error('MongoDB: Basic auth encoding failed (use ASCII username/password or change encoding).', e);
+      return null;
+    }
   }
   return null;
 }
@@ -123,19 +131,33 @@ class MongoDatabaseWrapper {
 
           if (upperSQL.startsWith('INSERT')) {
             method = 'insertOne';
-            // Parse INSERT INTO table (col1, col2) VALUES (?, ?)
-            const valuesMatch = sql.match(/VALUES\s*\(([^)]+)\)/i);
-            const columnsMatch = sql.match(/INSERT\s+INTO\s+\w+\s*\(([^)]+)\)/i);
-            
-            if (columnsMatch && valuesMatch) {
-              const columns = columnsMatch[1].split(',').map(c => c.trim());
-              const values = flatParams;
-              
+            // Multiline-safe: INSERT INTO t (a, b) VALUES (?, ?)
+            const fullInsert = sql.match(
+              /INSERT\s+INTO\s+\w+\s*\(\s*([\s\S]*?)\s*\)\s*VALUES\s*\(\s*([^)]*)\s*\)/i
+            );
+            if (fullInsert) {
+              const columns = fullInsert[1].split(',').map((c) => c.trim()).filter(Boolean);
               columns.forEach((col, idx) => {
-                if (values[idx] !== undefined) {
-                  data[col] = values[idx];
+                if (flatParams[idx] !== undefined) {
+                  data[col] = flatParams[idx];
                 }
               });
+            } else {
+              const valuesMatch = sql.match(/VALUES\s*\(([^)]+)\)/i);
+              const columnsMatch = sql.match(/INSERT\s+INTO\s+\w+\s*\(([^)]+)\)/i);
+              if (columnsMatch && valuesMatch) {
+                const columns = columnsMatch[1].split(',').map((c) => c.trim());
+                columns.forEach((col, idx) => {
+                  if (flatParams[idx] !== undefined) {
+                    data[col] = flatParams[idx];
+                  }
+                });
+              }
+            }
+            if (Object.keys(data).length === 0) {
+              throw new Error(
+                'MongoDB: INSERT produced no fields (parse failed). Check SQL or open the browser Network tab for the API response.'
+              );
             }
           } else if (upperSQL.startsWith('UPDATE')) {
             method = 'updateOne';
@@ -170,12 +192,11 @@ class MongoDatabaseWrapper {
                 }
               });
               
-              // Handle WHERE clause - the WHERE parameter comes after all SET parameters
+              // Handle WHERE clause — use the actual column (id, product_id, etc.)
               if (whereMatch) {
                 const whereField = whereMatch[1];
                 if (flatParams[paramIndex] !== undefined) {
-                  // Use 'id' field for filtering (will be converted to _id ObjectId on server)
-                  filter['id'] = flatParams[paramIndex];
+                  filter[whereField] = flatParams[paramIndex];
                   console.log('MongoDB: UPDATE filter set to', filter, 'from param index', paramIndex, 'value:', flatParams[paramIndex]);
                 } else {
                   console.error('MongoDB: UPDATE WHERE parameter not found at index', paramIndex, 'Total params:', flatParams.length, 'Params:', flatParams);
@@ -190,14 +211,18 @@ class MongoDatabaseWrapper {
             }
           } else if (upperSQL.startsWith('DELETE')) {
             method = 'deleteOne';
-            // Parse DELETE FROM table WHERE id = ?
             const whereMatch = sql.match(/WHERE\s+(\w+)\s*=\s*\?/i);
             if (whereMatch && flatParams[0] !== undefined) {
-              // Use 'id' field for filtering (MongoDB stores as _id but we query by id string)
-              filter['id'] = flatParams[0];
+              filter[whereMatch[1]] = flatParams[0];
             }
           } else {
             throw new Error(`Unsupported SQL operation: ${sql.substring(0, 20)}...`);
+          }
+
+          if (!collection) {
+            throw new Error(
+              `MongoDB: Could not resolve collection from SQL (missing FROM/INTO/UPDATE table). Snippet: ${sql.substring(0, 120)}`
+            );
           }
 
           const requestBody = {
@@ -227,6 +252,16 @@ class MongoDatabaseWrapper {
               error = { message: errorText || `HTTP ${response.status}` };
             }
             console.error('MongoDB: API error', response.status, error);
+            if (response.status === 401) {
+              throw new Error(
+                'MongoDB API returned 401. On Vercel set ADMIN_USERNAME and ADMIN_PASSWORD to match REACT_APP_ADMIN_USERNAME and REACT_APP_ADMIN_PASSWORD (same values you use to log in).'
+              );
+            }
+            if (response.status === 404) {
+              throw new Error(
+                `MongoDB API not found (404) at ${API_BASE_URL}. Use "npm run dev:vercel" for local API, or deploy api/db to Vercel. Plain "npm start" does not serve /api.`
+              );
+            }
             throw new Error(error.message || error.error || 'Database operation failed');
           }
 

@@ -7,9 +7,24 @@
       "maxDuration": 60
     }
   },
-  "env": {
-    "ADMIN_USERNAME": "admin",
-    "ADMIN_PASSWORD": "admin123"
-  }
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ]
 }
-

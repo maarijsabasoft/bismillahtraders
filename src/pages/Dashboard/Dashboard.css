@@ -4,13 +4,6 @@
   overflow-x: hidden;
 }
 
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 24px;
-}
-
 .dashboard-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -27,24 +20,21 @@
 }
 
 .stat-label {
-  font-size: 13px;
-  color: #666;
+  font-size: 12px;
+  color: var(--lp-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
   margin-bottom: 8px;
 }
 
 .stat-value {
   font-size: 28px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 @media (max-width: 768px) {
-  .page-title {
-    font-size: 20px;
-    margin-bottom: 20px;
-  }
-
   .dashboard-stats {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
@@ -60,11 +50,6 @@
 }
 
 @media (max-width: 480px) {
-  .page-title {
-    font-size: 18px;
-    margin-bottom: 12px;
-  }
-
   .dashboard-stats {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -82,4 +67,3 @@
     font-size: 11px;
   }
 }
-

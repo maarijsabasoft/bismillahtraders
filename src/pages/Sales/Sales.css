@@ -10,8 +10,9 @@
 
 .cart-section h4 {
   margin-bottom: 12px;
-  color: #333;
+  color: var(--lp-ink);
   font-size: 16px;
+  font-weight: 700;
 }
 
 .product-grid {
@@ -21,35 +22,36 @@
   max-height: 300px;
   overflow-y: auto;
   padding: 12px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
+  background-color: var(--lp-cream);
+  border-radius: 8px;
+  border: 1px solid var(--lp-line-light);
 }
 
 .product-card {
   padding: 12px;
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  background-color: var(--lp-surface);
+  border: 1px solid var(--lp-line-light);
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .product-card:hover {
-  border-color: #667eea;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.02) 100%);
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+  border-color: rgba(var(--lp-navy-rgb), 0.35);
+  background: rgba(var(--lp-navy-rgb), 0.04);
+  box-shadow: 0 4px 12px rgba(var(--lp-navy-rgb), 0.1);
 }
 
 .product-name {
   font-size: 13px;
-  color: #333;
+  color: var(--lp-ink);
   margin-bottom: 4px;
 }
 
 .product-price {
   font-size: 14px;
-  font-weight: 600;
-  color: #667eea;
+  font-weight: 700;
+  color: var(--lp-navy);
 }
 
 .cart-table {
@@ -67,11 +69,11 @@
 .cart-table td {
   padding: 8px;
   text-align: left;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--lp-line-light);
 }
 
 .cart-table th {
-  background-color: #f5f5f5;
+  background-color: var(--lp-cream);
   font-weight: 600;
   font-size: 12px;
 }
@@ -79,15 +81,15 @@
 .cart-input {
   width: 60px;
   padding: 4px 8px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  border: 1px solid var(--lp-line);
+  border-radius: 8px;
   font-size: 13px;
 }
 
 .cart-totals {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 2px solid #e0e0e0;
+  border-top: 2px solid var(--lp-line-light);
 }
 
 .total-row {
@@ -98,10 +100,10 @@
 }
 
 .total-final {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 18px;
-  color: #667eea;
-  border-top: 1px solid #e0e0e0;
+  color: var(--lp-navy);
+  border-top: 1px solid var(--lp-line-light);
   padding-top: 12px;
   margin-top: 8px;
 }

@@ -4,19 +4,18 @@ import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
 import Modal from '../../components/Modal/Modal';
-import { 
-  FiMenu, 
-  FiX, 
-  FiPackage, 
-  FiShoppingCart, 
-  FiBarChart2, 
-  FiUser, 
-  FiUsers,
-  FiCheckCircle,
-  FiZap,
-  FiDroplet,
-  FiCoffee,
-  FiActivity
+import {
+  FiMenu,
+  FiX,
+  FiPackage,
+  FiShoppingCart,
+  FiBarChart2,
+  FiDollarSign,
+  FiMapPin,
+  FiBriefcase,
+  FiLayers,
+  FiTrendingUp,
+  FiShield,
 } from 'react-icons/fi';
 import './Landing.css';
 
@@ -31,7 +30,6 @@ const Landing = () => {
   const [loading, setLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Open login modal if coming from /login route
   useEffect(() => {
     if (location.pathname === '/login') {
       setIsLoginOpen(true);
@@ -49,10 +47,10 @@ const Landing = () => {
     setLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       const success = await login(username, password);
-      
+
       if (success) {
         setIsLoginOpen(false);
         navigate('/dashboard');
@@ -73,297 +71,241 @@ const Landing = () => {
     setPassword('');
   };
 
+  const partnerCategories = [
+    { title: 'Gourmet & premium lines', detail: 'Packaged foods and beverage lines from established distributors.' },
+    { title: 'Cola & carbonated drinks', detail: 'Leading cola and soft-drink brands supplied to retailers and points of sale.' },
+    { title: 'Juices & nectars', detail: 'Fruit juices, nectars, and related ready-to-drink products.' },
+    { title: 'Water, energy & more', detail: 'Bottled water, energy drinks, and complementary beverage categories.' },
+  ];
+
+  const softwareFeatures = [
+    {
+      icon: <FiPackage />,
+      title: 'Inventory control',
+      text: 'Track stock by product and category, record movements, and reduce shortages or overstock across your beverage lines.',
+    },
+    {
+      icon: <FiDollarSign />,
+      title: 'Daily expenses',
+      text: 'Log and categorise day-to-day spending so costs stay visible, consistent, and easy to review at month-end.',
+    },
+    {
+      icon: <FiShoppingCart />,
+      title: 'Sales & orders',
+      text: 'Support sales workflows, customer records, and invoicing alongside your warehouse picture.',
+    },
+    {
+      icon: <FiBarChart2 />,
+      title: 'Reports & overview',
+      text: 'Summaries for sales, inventory, and expenses help you decide with clarity—not guesswork.',
+    },
+  ];
+
   return (
-    <div className="landing-page">
-      {/* Header */}
-      <header className="landing-header">
+    <div className="landing-page landing-page--pro">
+      <header className="landing-header landing-header--pro">
         <div className="landing-header-content">
-          <div className="landing-logo">
-            <h1>Bismillah Traders</h1>
+          <div className="landing-logo landing-logo--pro">
+            <div className="landing-logo-text">
+              <span className="landing-logo-title">Bismillah Traders</span>
+              <span className="landing-logo-tagline">Beverages · Kabirwala</span>
+            </div>
           </div>
-          <button 
-            className="mobile-menu-btn" 
+          <button
+            type="button"
+            className="mobile-menu-btn"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <FiX /> : <FiMenu />}
           </button>
-          <nav className={`landing-nav ${mobileMenuOpen ? 'mobile-nav-open' : ''}`}>
-            <a href="#features" onClick={() => setMobileMenuOpen(false)}>Features</a>
-            <a href="#products" onClick={() => setMobileMenuOpen(false)}>Products</a>
+          <nav className={`landing-nav landing-nav--pro ${mobileMenuOpen ? 'mobile-nav-open' : ''}`}>
+            <a href="#company" onClick={() => setMobileMenuOpen(false)}>Company</a>
+            <a href="#partners" onClick={() => setMobileMenuOpen(false)}>Trade</a>
+            <a href="#software" onClick={() => setMobileMenuOpen(false)}>Software</a>
             <Button onClick={handleLoginClick} variant="primary" size="small">
-              Login
+              Staff login
             </Button>
           </nav>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="hero-section">
+      <section className="hero-section hero-section--pro">
         <div className="hero-background">
-          <div className="hero-gradient"></div>
-          <div className="hero-shapes">
-            <div className="shape shape-1"></div>
-            <div className="shape shape-2"></div>
-            <div className="shape shape-3"></div>
-          </div>
+          <div className="hero-gradient hero-gradient--pro" />
+          <div className="hero-grid-pattern" aria-hidden="true" />
         </div>
         <div className="container">
-          <div className="hero-content">
+          <div className="hero-content hero-content--pro">
             <div className="hero-text">
-              <div className="hero-badge">
-                <FiActivity className="badge-icon" />
-                <span>Trusted by 1000+ Businesses</span>
+              <div className="hero-badge hero-badge--pro">
+                <FiMapPin className="badge-icon" aria-hidden="true" />
+                <span>Kabirwala, District Khanewal, Pakistan</span>
               </div>
-              <h1 className="hero-title">
-                <span className="gradient-text">BeverageHub</span>
-                <br />
-                Your Complete Business Solution
+              <h1 className="hero-title hero-title--pro">
+                Wholesale beverage distribution,
+                <span className="hero-title-accent"> managed with discipline.</span>
               </h1>
-              <p className="hero-subtitle">
-                Streamline your beverage business with comprehensive inventory, sales, and customer management solutions. 
-                Built for modern businesses that demand efficiency and reliability.
+              <p className="hero-subtitle hero-subtitle--pro">
+                Bismillah Traders serves the trade with products from trusted agencies—Gourmet lines, cola and soft drinks,
+                juices, and other beverages. This application supports the business with structured inventory management
+                and efficient handling of daily expenses.
               </p>
+              <div className="hero-trust-row">
+                <div className="hero-trust-item">
+                  <FiShield aria-hidden="true" />
+                  <span>Family-run operation</span>
+                </div>
+                <div className="hero-trust-item">
+                  <FiBriefcase aria-hidden="true" />
+                  <span>Built for real trade volumes</span>
+                </div>
+                <div className="hero-trust-item">
+                  <FiLayers aria-hidden="true" />
+                  <span>Inventory &amp; expenses in one place</span>
+                </div>
+              </div>
               <div className="hero-buttons">
-                <Button onClick={handleLoginClick} size="large" variant="primary" className="hero-btn-primary">
-                  <FiZap /> Login to Dashboard
+                <Button
+                  onClick={handleLoginClick}
+                  size="large"
+                  variant="primary"
+                  className="hero-btn-primary hero-btn-primary--pro"
+                >
+                  Open management system
                 </Button>
-                <Button onClick={handleLoginClick} size="large" variant="secondary" className="hero-btn-secondary">
-                  Get Started Free
+                <Button
+                  type="button"
+                  onClick={() => document.getElementById('software')?.scrollIntoView({ behavior: 'smooth' })}
+                  size="large"
+                  variant="secondary"
+                  className="hero-btn-secondary hero-btn-secondary--pro"
+                >
+                  View capabilities
                 </Button>
               </div>
             </div>
-            <div className="hero-image">
-              <div className="hero-image-wrapper">
-                <img 
-                  src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop" 
-                  alt="Beverages"
-                  className="hero-img"
-                />
-                <div className="hero-image-overlay"></div>
+            <div className="hero-aside">
+              <div className="hero-panel">
+                <p className="hero-panel-label">At a glance</p>
+                <ul className="hero-panel-list">
+                  <li><strong>Focus</strong> — Beverage wholesale &amp; agency lines</li>
+                  <li><strong>Location</strong> — Kabirwala (Khanewal)</li>
+                  <li><strong>System</strong> — Stock, sales context, and expense tracking</li>
+                </ul>
+                <div className="hero-panel-stat">
+                  <FiTrendingUp aria-hidden="true" />
+                  <div>
+                    <span className="hero-panel-stat-title">Operational clarity</span>
+                    <span className="hero-panel-stat-sub">Fewer surprises in stock and cash outflow</span>
+                  </div>
+                </div>
+              </div>
+              <div className="hero-image hero-image--pro">
+                <div className="hero-image-wrapper">
+                  <img
+                    src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&h=640&fit=crop"
+                    alt="Organised beverage warehouse shelving"
+                    className="hero-img"
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="features-section">
+      <section id="company" className="company-section">
         <div className="container">
-          <h2 className="section-title">Powerful Features</h2>
-          <p className="section-subtitle">Everything you need to manage your beverage business efficiently</p>
-          <div className="features-grid">
-            <div className="feature-card">
-              <div className="feature-icon">
-                <FiPackage />
-              </div>
-              <div className="feature-image">
-                <img 
-                  src="https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400&h=300&fit=crop" 
-                  alt="Inventory Management"
-                />
-              </div>
-              <h3>Inventory Management</h3>
-              <p>Track stock levels, manage inventory transactions, and get low stock alerts in real-time</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">
-                <FiShoppingCart />
-              </div>
-              <div className="feature-image">
-                <img 
-                  src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop" 
-                  alt="Sales Management"
-                />
-              </div>
-              <h3>Sales Management</h3>
-              <p>Process sales quickly, generate professional invoices, and track customer purchases</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">
-                <FiPackage />
-              </div>
-              <div className="feature-image">
-                <img 
-                  src="https://images.unsplash.com/photo-1556911220-bff31c812dba?w=400&h=300&fit=crop" 
-                  alt="Product Catalog"
-                />
-              </div>
-              <h3>Product Catalog</h3>
-              <p>Manage your beverage products with detailed information, pricing, and categorization</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">
-                <FiUsers />
-              </div>
-              <div className="feature-image">
-                <img 
-                  src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=400&h=300&fit=crop" 
-                  alt="Customer Management"
-                />
-              </div>
-              <h3>Customer Management</h3>
-              <p>Maintain customer database, track credit limits and outstanding balances</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">
-                <FiBarChart2 />
-              </div>
-              <div className="feature-image">
-                <img 
-                  src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop" 
-                  alt="Analytics & Reports"
-                />
-              </div>
-              <h3>Analytics & Reports</h3>
-              <p>Generate detailed reports on sales, profits, expenses, and business performance</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">
-                <FiUser />
-              </div>
-              <div className="feature-image">
-                <img 
-                  src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=400&h=300&fit=crop" 
-                  alt="Staff Management"
-                />
-              </div>
-              <h3>Staff Management</h3>
-              <p>Manage staff information, roles, salaries, and track attendance records</p>
-            </div>
+          <div className="section-heading">
+            <h2 className="section-title section-title--pro">Company</h2>
+            <p className="section-subtitle section-subtitle--pro">
+              An established name in the beverage trade, rooted in Kabirwala and focused on dependable supply and sound administration.
+            </p>
+          </div>
+          <div className="leadership-grid">
+            <article className="leader-card">
+              <div className="leader-card-accent" aria-hidden="true" />
+              <div className="leader-initials" aria-hidden="true">MB</div>
+              <h3 className="leader-name">Malik Bashir</h3>
+              <p className="leader-role">Proprietor &amp; lead oversight</p>
+              <p className="leader-bio">
+                Guides strategy, agency relationships, and the long-term direction of Bismillah Traders in the regional beverage market.
+              </p>
+            </article>
+            <article className="leader-card">
+              <div className="leader-card-accent" aria-hidden="true" />
+              <div className="leader-initials" aria-hidden="true">MFB</div>
+              <h3 className="leader-name">Malik Farhan Bashir</h3>
+              <p className="leader-role">Management &amp; operations</p>
+              <p className="leader-bio">
+                Works alongside Malik Bashir on day-to-day trade, customer service, and the systems that keep inventory and expenses under control.
+              </p>
+            </article>
           </div>
         </div>
       </section>
 
-      {/* Products Section */}
-      <section id="products" className="products-section">
+      <section id="partners" className="partners-section-pro">
         <div className="container">
-          <h2 className="section-title">Our Product Categories</h2>
-          <p className="section-subtitle">Comprehensive beverage management for all product types</p>
-          <div className="products-grid">
-            <div className="product-category">
-              <div className="product-icon">
-                <FiDroplet />
-              </div>
-              <div className="product-image">
-                <img 
-                  src="https://images.unsplash.com/photo-1554866585-cd94860890b7?w=400&h=400&fit=crop" 
-                  alt="Soft Drinks"
-                />
-              </div>
-              <h3>Soft Drinks</h3>
-              <p>Carbonated beverages, fizzy drinks, and sodas</p>
-            </div>
-            <div className="product-category">
-              <div className="product-icon">
-                <FiDroplet />
-              </div>
-              <div className="product-image">
-                <img 
-                  src="https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&h=400&fit=crop" 
-                  alt="Fruit Juices"
-                />
-              </div>
-              <h3>Fruit Juices</h3>
-              <p>Fresh and packaged fruit juices, nectars</p>
-            </div>
-            <div className="product-category">
-              <div className="product-icon">
-                <FiDroplet />
-              </div>
-              <div className="product-image">
-                <img 
-                  src="https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=400&fit=crop" 
-                  alt="Water & Hydration"
-                />
-              </div>
-              <h3>Water & Hydration</h3>
-              <p>Mineral water, energy drinks, and sports beverages</p>
-            </div>
-            <div className="product-category">
-              <div className="product-icon">
-                <FiCoffee />
-              </div>
-              <div className="product-image">
-                <img 
-                  src="https://images.unsplash.com/photo-1511920170033-f8396924c348?w=400&h=400&fit=crop" 
-                  alt="Tea & Coffee"
-                />
-              </div>
-              <h3>Tea & Coffee</h3>
-              <p>Hot beverages, instant drinks, and ready-to-drink options</p>
-            </div>
-            <div className="product-category">
-              <div className="product-icon">
-                <FiDroplet />
-              </div>
-              <div className="product-image">
-                <img 
-                  src="https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=400&h=400&fit=crop" 
-                  alt="Energy Drinks"
-                />
-              </div>
-              <h3>Energy Drinks</h3>
-              <p>High-energy beverages, sports drinks, and performance boosters</p>
-            </div>
-            <div className="product-category">
-              <div className="product-icon">
-                <FiDroplet />
-              </div>
-              <div className="product-image">
-                <img 
-                  src="https://images.unsplash.com/photo-1551538827-9c037cb4f32a?w=400&h=400&fit=crop" 
-                  alt="Dairy Beverages"
-                />
-              </div>
-              <h3>Dairy Beverages</h3>
-              <p>Milk-based drinks, smoothies, and dairy alternatives</p>
-            </div>
+          <div className="section-heading">
+            <h2 className="section-title section-title--pro">Trade &amp; agencies</h2>
+            <p className="section-subtitle section-subtitle--pro">
+              The business engages multiple agencies and product streams—so shelves stay stocked and customers served across categories.
+            </p>
+          </div>
+          <div className="partners-grid-pro">
+            {partnerCategories.map((item) => (
+              <article key={item.title} className="partner-card-pro">
+                <h3>{item.title}</h3>
+                <p>{item.detail}</p>
+              </article>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="cta-section">
+      <section id="software" className="features-section features-section--pro">
+        <div className="container">
+          <div className="section-heading">
+            <h2 className="section-title section-title--pro">Management software</h2>
+            <p className="section-subtitle section-subtitle--pro">
+              Purpose-built for Bismillah Traders: keep inventory accurate and daily expenses under a clear, auditable routine.
+            </p>
+          </div>
+          <div className="features-grid features-grid--pro">
+            {softwareFeatures.map((f) => (
+              <div key={f.title} className="feature-card feature-card--pro">
+                <div className="feature-icon feature-icon--pro">{f.icon}</div>
+                <h3>{f.title}</h3>
+                <p>{f.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="cta-section cta-section--pro">
         <div className="cta-background">
-          <div className="cta-gradient"></div>
+          <div className="cta-gradient cta-gradient--pro" />
         </div>
         <div className="container">
           <div className="cta-content">
-            <h2>Ready to Transform Your Business?</h2>
-            <p>Join thousands of businesses already using BeverageHub to streamline their operations</p>
-            <Button onClick={handleLoginClick} size="large" variant="primary" className="cta-button">
-              <FiZap /> Get Started Now
+            <h2>Authorised staff</h2>
+            <p>
+              Sign in to record stock movements, expenses, and sales-related data. Access is restricted to the business team.
+            </p>
+            <Button onClick={handleLoginClick} size="large" variant="primary" className="cta-button cta-button--pro">
+              Sign in to dashboard
             </Button>
-            <div className="cta-features">
-              <div className="cta-feature">
-                <FiCheckCircle /> No credit card required
-              </div>
-              <div className="cta-feature">
-                <FiCheckCircle /> Free 30-day trial
-              </div>
-              <div className="cta-feature">
-                <FiCheckCircle /> Setup in minutes
-              </div>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Login Modal */}
-      <Modal
-        isOpen={isLoginOpen}
-        onClose={handleCloseLogin}
-        title="Admin Login"
-        size="small"
-      >
+      <Modal isOpen={isLoginOpen} onClose={handleCloseLogin} title="Staff login" size="small">
         <form onSubmit={handleLoginSubmit}>
-          {error && (
-            <div className="login-error-message">
-              {error}
-            </div>
-          )}
-          
+          {error && <div className="login-error-message">{error}</div>}
+
           <Input
             label="Username"
             type="text"
@@ -373,7 +315,7 @@ const Landing = () => {
             placeholder="Enter username"
             autoFocus
           />
-          
+
           <Input
             label="Password"
             type="password"
@@ -382,46 +324,46 @@ const Landing = () => {
             required
             placeholder="Enter password"
           />
-          
-          <Button 
-            type="submit" 
-            variant="primary" 
+
+          <Button
+            type="submit"
+            variant="primary"
             size="large"
             disabled={loading}
             style={{ width: '100%', marginTop: '20px' }}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
-        
+
         <div className="login-info-modal">
-          <p><strong>Default Credentials:</strong></p>
+          <p><strong>Default credentials (development)</strong></p>
           <p>Username: <strong>admin</strong></p>
           <p>Password: <strong>admin123</strong></p>
         </div>
       </Modal>
 
-      {/* Footer */}
-      <footer className="landing-footer">
+      <footer className="landing-footer landing-footer--pro">
         <div className="container">
           <div className="footer-content">
             <div className="footer-section">
               <h4>Bismillah Traders</h4>
-              <p>Premium Beverages Management System</p>
+              <p>Beverage distribution · Kabirwala, District Khanewal, Pakistan</p>
+              <p className="footer-owners">Malik Bashir · Malik Farhan Bashir</p>
             </div>
             <div className="footer-section">
-              <h4>Quick Links</h4>
-              <a href="#features">Features</a>
-              <a href="#products">Products</a>
+              <h4>Navigate</h4>
+              <a href="#company">Company</a>
+              <a href="#partners">Trade</a>
+              <a href="#software">Software</a>
             </div>
             <div className="footer-section">
-              <h4>Contact</h4>
-              <p>Email: info@farhantraders.com</p>
-              <p>Phone: +92 XXX XXXXXXX</p>
+              <h4>System</h4>
+              <p>Inventory management and daily expense handling for internal use.</p>
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; 2024 Bismillah Traders. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Bismillah Traders. All rights reserved.</p>
           </div>
         </div>
       </footer>
