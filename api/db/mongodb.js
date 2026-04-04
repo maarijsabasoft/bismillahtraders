@@ -10,6 +10,37 @@ let cachedClient = null;
 let cachedDb = null;
 let connectPromise = null;
 
+function isRetryableMongoError(err) {
+  const m = err && err.message ? err.message : String(err);
+  return (
+    m.includes('SSL') ||
+    m.includes('TLS') ||
+    m.includes('tlsv1 alert') ||
+    m.includes('alert number 80') ||
+    m.includes('ECONNRESET') ||
+    m.includes('ETIMEDOUT') ||
+    m.includes('ENOTFOUND') ||
+    m.includes('PoolCleared') ||
+    m.includes('pool') ||
+    m.includes('socket') ||
+    m.includes('network error')
+  );
+}
+
+async function resetMongoConnection() {
+  connectPromise = null;
+  const client = cachedClient;
+  cachedClient = null;
+  cachedDb = null;
+  if (client) {
+    try {
+      await client.close();
+    } catch (e) {
+      console.warn('MongoDB: close during reset:', e.message);
+    }
+  }
+}
+
 async function getMongoClient() {
   if (cachedClient) {
     return cachedClient;
@@ -22,9 +53,13 @@ async function getMongoClient() {
       const client = new MongoClient(uri, {
         maxPoolSize: 5,
         minPoolSize: 0,
+        maxIdleTimeMS: 20000,
         serverSelectionTimeoutMS: 45000,
         connectTimeoutMS: 45000,
-        socketTimeoutMS: 45000,
+        socketTimeoutMS: 60000,
+        retryWrites: true,
+        // Prefer IPv4 — avoids some Atlas + serverless TLS handshake failures
+        family: 4,
       });
       await client.connect();
       cachedClient = client;
@@ -91,20 +126,22 @@ export default async function handler(req, res) {
   res.setHeader('Expires', '0');
 
   try {
-    const db = await getDatabase();
-    const { method, collection, operation, filter = {}, data = {}, options = {} } = req.body;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const db = await getDatabase();
+        const { method, collection, operation, filter = {}, data = {}, options = {} } = req.body;
 
-    if (!method || !collection) {
-      return res.status(400).json({ error: 'Method and collection required' });
-    }
+        if (!method || !collection) {
+          return res.status(400).json({ error: 'Method and collection required' });
+        }
 
-    // Convert 'id' field in filter to '_id' ObjectId for MongoDB
-    const mongoFilter = convertFilterToMongo(filter);
+        // Convert 'id' field in filter to '_id' ObjectId for MongoDB
+        const mongoFilter = convertFilterToMongo(filter);
 
-    let result;
-    const coll = db.collection(collection);
+        let result;
+        const coll = db.collection(collection);
 
-    switch (method) {
+        switch (method) {
       case 'insertOne':
         {
           const now = new Date().toISOString();
@@ -240,7 +277,16 @@ export default async function handler(req, res) {
         });
     }
 
-    return res.status(200).json({ success: true, data: result });
+        return res.status(200).json({ success: true, data: result });
+      } catch (error) {
+        if (attempt === 0 && isRetryableMongoError(error)) {
+          console.warn('MongoDB: transient error, resetting connection and retrying once:', error.message);
+          await resetMongoConnection();
+          continue;
+        }
+        throw error;
+      }
+    }
   } catch (error) {
     console.error('MongoDB error:', error);
     return res.status(500).json({
