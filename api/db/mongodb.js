@@ -1,9 +1,15 @@
 // Vercel MongoDB Atlas API route - Fast, reliable, no timeouts
 // Uses MongoDB Atlas for serverless document database
 
-import { MongoClient, ObjectId } from 'mongodb';
+import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
 import { verifyAuth } from './auth';
-import { getMongoUri, getResolvedMongoDbName, getMongoDriverTimeouts } from './mongo-env.js';
+import {
+  getMongoUri,
+  getResolvedMongoDbName,
+  getMongoDriverTimeouts,
+  getMongoDnsFamily,
+  isVercelRuntime,
+} from './mongo-env.js';
 
 // MongoDB connection — single in-flight connect so parallel API calls (dashboard load) don't stack connects
 let cachedClient = null;
@@ -53,16 +59,23 @@ async function getMongoClient() {
       const uri = getMongoUri();
       const dbName = getResolvedMongoDbName(uri);
       const { serverSelectionTimeoutMS, connectTimeoutMS, socketTimeoutMS } = getMongoDriverTimeouts();
+      const family = getMongoDnsFamily();
+      const onVercel = isVercelRuntime();
       const client = new MongoClient(uri, {
         maxPoolSize: 5,
         minPoolSize: 0,
-        maxIdleTimeMS: 20000,
+        // Recycle idle sockets sooner on serverless — thawed lambdas often see dead TLS on old pool members
+        maxIdleTimeMS: onVercel ? 10000 : 20000,
         serverSelectionTimeoutMS,
         connectTimeoutMS,
         socketTimeoutMS,
         retryWrites: true,
-        // Prefer IPv4 — avoids some Atlas + serverless TLS handshake failures
-        family: 4,
+        serverApi: {
+          version: ServerApiVersion.v1,
+          strict: false,
+          deprecationErrors: false,
+        },
+        ...(family !== undefined ? { family } : {}),
       });
       await client.connect();
       cachedClient = client;
@@ -81,7 +94,25 @@ async function getMongoClient() {
   }
 }
 
+/** After Vercel freezes a function, a cached TCP/TLS session may be invalid — ping before work to force reconnect. */
+async function invalidateClientIfPingFails() {
+  if (!cachedClient) return;
+  const budgetMs = isVercelRuntime() ? 2500 : 5000;
+  try {
+    await Promise.race([
+      cachedClient.db('admin').command({ ping: 1 }),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('MongoDB ping timeout')), budgetMs);
+      }),
+    ]);
+  } catch (e) {
+    console.warn('MongoDB: ping failed, resetting client:', e && e.message ? e.message : e);
+    await resetMongoConnection();
+  }
+}
+
 async function getDatabase() {
+  await invalidateClientIfPingFails();
   if (cachedDb) {
     return cachedDb;
   }

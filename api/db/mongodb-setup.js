@@ -1,21 +1,32 @@
 // MongoDB Atlas setup script - Initialize collections and indexes
 // Access via: POST /api/db/mongodb-setup with admin credentials
 
-import { MongoClient } from 'mongodb';
+import { MongoClient, ServerApiVersion } from 'mongodb';
 import { verifyAuth } from './auth';
-import { getMongoUri, getResolvedMongoDbName, getMongoDriverTimeouts } from './mongo-env.js';
+import {
+  getMongoUri,
+  getResolvedMongoDbName,
+  getMongoDriverTimeouts,
+  getMongoDnsFamily,
+} from './mongo-env.js';
 
 async function getDatabase() {
   const uri = getMongoUri();
   const dbName = getResolvedMongoDbName(uri);
   const { serverSelectionTimeoutMS, connectTimeoutMS, socketTimeoutMS } = getMongoDriverTimeouts();
+  const family = getMongoDnsFamily();
 
   const client = new MongoClient(uri, {
     serverSelectionTimeoutMS,
     connectTimeoutMS,
     socketTimeoutMS,
     retryWrites: true,
-    family: 4,
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: false,
+      deprecationErrors: false,
+    },
+    ...(family !== undefined ? { family } : {}),
   });
   await client.connect();
   const db = client.db(dbName);

@@ -37,3 +37,19 @@ export function getMongoDriverTimeouts() {
   const socketTimeoutMS = Number(process.env.MONGODB_SOCKET_MS) || (onVercel ? 10000 : 60000);
   return { serverSelectionTimeoutMS, connectTimeoutMS, socketTimeoutMS };
 }
+
+/**
+ * Omit (default) for normal OS DNS / dual-stack. Set MONGODB_DNS_FAMILY=4 or 6 only if Atlas/network docs require it.
+ * Forcing IPv4 has been linked to intermittent TLS "alert 80" on some Vercel ↔ Atlas routes.
+ */
+export function getMongoDnsFamily() {
+  const v = process.env.MONGODB_DNS_FAMILY;
+  if (v === undefined || v === null || String(v).trim() === '') return undefined;
+  const n = Number(String(v).trim());
+  if (n === 4 || n === 6) return n;
+  return undefined;
+}
+
+export function isVercelRuntime() {
+  return isVercelServerless();
+}
