@@ -12,7 +12,8 @@ function getApiUrl() {
 }
 
 const API_BASE_URL = getApiUrl();
-const FETCH_TIMEOUT = 30000; // 30 seconds
+// Cold Vercel + Atlas + first TLS handshake can exceed 30s when many requests run in parallel
+const FETCH_TIMEOUT = Number(process.env.REACT_APP_MONGO_FETCH_TIMEOUT_MS) || 90000;
 
 // Fetch with timeout helper
 async function fetchWithTimeout(url, options, timeout = FETCH_TIMEOUT) {

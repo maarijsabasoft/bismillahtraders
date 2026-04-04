@@ -5,31 +5,49 @@ import { MongoClient, ObjectId } from 'mongodb';
 import { verifyAuth } from './auth';
 import { getMongoUri, getResolvedMongoDbName } from './mongo-env.js';
 
-// MongoDB connection
+// MongoDB connection — single in-flight connect so parallel API calls (dashboard load) don't stack connects
 let cachedClient = null;
 let cachedDb = null;
+let connectPromise = null;
 
 async function getMongoClient() {
   if (cachedClient) {
     return cachedClient;
   }
 
-  const uri = getMongoUri();
-  const dbName = getResolvedMongoDbName(uri);
+  if (!connectPromise) {
+    connectPromise = (async () => {
+      const uri = getMongoUri();
+      const dbName = getResolvedMongoDbName(uri);
+      const client = new MongoClient(uri, {
+        maxPoolSize: 5,
+        minPoolSize: 0,
+        serverSelectionTimeoutMS: 45000,
+        connectTimeoutMS: 45000,
+        socketTimeoutMS: 45000,
+      });
+      await client.connect();
+      cachedClient = client;
+      cachedDb = client.db(dbName);
+    })();
+  }
 
-  const client = new MongoClient(uri);
-  await client.connect();
-  cachedClient = client;
-  cachedDb = client.db(dbName);
-
-  return client;
+  try {
+    await connectPromise;
+    return cachedClient;
+  } catch (err) {
+    connectPromise = null;
+    cachedClient = null;
+    cachedDb = null;
+    throw err;
+  }
 }
 
 async function getDatabase() {
   if (cachedDb) {
     return cachedDb;
   }
-  
+
   await getMongoClient();
   return cachedDb;
 }
