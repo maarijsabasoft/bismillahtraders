@@ -375,11 +375,16 @@ class MongoDatabaseWrapper {
               console.error('MongoDB: Could not parse UPDATE SET clause from SQL:', sql);
             }
           } else if (upperSQL.startsWith('DELETE')) {
-            method = 'deleteOne';
-            const whereMatch = sql.match(/WHERE\s+(\w+)\s*=\s*\?/i);
-            if (whereMatch && flatParams[0] !== undefined) {
-              filter[whereMatch[1]] = flatParams[0];
+            Object.assign(filter, buildFilterFromWhereClause(sql, flatParams));
+            if (Object.keys(filter).length === 0) {
+              throw new Error(
+                'MongoDB: DELETE must use a single equality with ? (e.g. WHERE id = ? or WHERE sale_id = ?).'
+              );
             }
+            const delMany =
+              collection === 'sale_items' &&
+              Object.prototype.hasOwnProperty.call(filter, 'sale_id');
+            method = delMany ? 'deleteMany' : 'deleteOne';
           } else {
             throw new Error(`Unsupported SQL operation: ${sql.substring(0, 20)}...`);
           }

@@ -14,7 +14,7 @@ const Table = ({ columns, data, onRowClick, actions }) => {
                   {col.label}
                 </th>
               ))}
-              {actions && <th style={{ width: '100px' }}>Actions</th>}
+              {actions && <th style={{ minWidth: '200px', width: '22%' }}>Actions</th>}
             </tr>
           </thead>
           <tbody>

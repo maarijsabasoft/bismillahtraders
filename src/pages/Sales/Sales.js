@@ -8,24 +8,10 @@ import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
 import Modal from '../../components/Modal/Modal';
 import Table from '../../components/Table/Table';
-import { FiPlus, FiX } from 'react-icons/fi';
+import { FiPlus, FiX, FiTrash2 } from 'react-icons/fi';
+import { getCurrentProductStock } from '../../utils/stockLevels';
+import { deleteSaleById } from '../../utils/saleDelete';
 import './Sales.css';
-
-async function getCurrentProductStock(db, productId) {
-  const pid = String(productId);
-  let row = await db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ?').get(pid);
-  if (row == null && /^\d+$/.test(pid)) {
-    row = await db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ?').get(
-      parseInt(pid, 10)
-    );
-  }
-  if (row != null && row.quantity != null) {
-    return parseInt(row.quantity, 10) || 0;
-  }
-  const txs = await db.prepare('SELECT quantity FROM inventory WHERE product_id = ?').all(pid);
-  const arr = Array.isArray(txs) ? txs : [];
-  return arr.reduce((s, t) => s + (parseInt(t.quantity, 10) || 0), 0);
-}
 
 const Sales = () => {
   const { db, isReady, dataRevision } = useDatabase();
@@ -329,6 +315,25 @@ const Sales = () => {
     });
   };
 
+  const handleDeleteSale = async (row) => {
+    const inv = row.invoice_number || row.id;
+    if (
+      !window.confirm(
+        `Delete sale ${inv}? Stock will be restored and any unpaid balance for this invoice will be removed from the customer.`
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteSaleById(db, row.id);
+      await loadSales();
+      toastSuccess(`Sale ${inv} deleted.`);
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+      toastError(error?.message || 'Could not delete sale.');
+    }
+  };
+
   const { subtotal, totalDiscount, totalTax, finalAmount } = calculateTotals();
   const cashAmt = Math.max(0, parseFloat(formData.cash_paid) || 0);
   const bankAmt = Math.max(0, parseFloat(formData.bank_paid) || 0);
@@ -377,7 +382,23 @@ const Sales = () => {
       </div>
 
       <Card>
-        <Table columns={columns} data={sales} />
+        <Table
+          columns={columns}
+          data={sales}
+          actions={(row) => (
+            <Button
+              variant="danger"
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteSale(row);
+              }}
+              title="Delete sale"
+            >
+              <FiTrash2 />
+            </Button>
+          )}
+        />
       </Card>
 
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title="New Sale" size="large">

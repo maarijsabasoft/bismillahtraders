@@ -6,7 +6,9 @@ import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
 import Modal from '../../components/Modal/Modal';
 import Table from '../../components/Table/Table';
-import { FiPrinter, FiEye, FiFileText } from 'react-icons/fi';
+import { FiPrinter, FiEye, FiFileText, FiTrash2 } from 'react-icons/fi';
+import { useToast } from '../../context/ToastContext';
+import { deleteSaleById } from '../../utils/saleDelete';
 import './Invoices.css';
 
 function saleCashBank(invoice) {
@@ -266,6 +268,7 @@ const InvoiceSlip = ({ invoice }) => (
 
 const Invoices = () => {
   const { db, isReady, dataRevision } = useDatabase();
+  const { toastError, toastSuccess } = useToast();
   const { readListCache, writeListCache } = useListCache();
   const [invoices, setInvoices] = useState(
     () => readListCache(LIST_CACHE_KEYS.invoices) ?? []
@@ -332,6 +335,29 @@ const Invoices = () => {
       setTimeout(() => window.print(), 200);
     } catch (error) {
       console.error('Error preparing print:', error);
+    }
+  };
+
+  const handleDeleteInvoice = async (row) => {
+    const inv = row.invoice_number || row.id;
+    if (
+      !window.confirm(
+        `Delete invoice ${inv}? This removes the sale, restores stock, and reverses any unpaid amount on the customer for this invoice.`
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteSaleById(db, row.id);
+      await loadInvoices();
+      if (selectedInvoice && String(selectedInvoice.id) === String(row.id)) {
+        setSelectedInvoice(null);
+        setIsViewModalOpen(false);
+      }
+      toastSuccess(`Invoice ${inv} deleted.`);
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+      toastError(error?.message || 'Could not delete invoice.');
     }
   };
 
@@ -408,6 +434,17 @@ const Invoices = () => {
                 >
                   <FiPrinter /> Slip
                 </Button>
+                <Button
+                  variant="danger"
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteInvoice(row);
+                  }}
+                  title="Delete invoice"
+                >
+                  <FiTrash2 />
+                </Button>
               </div>
             </>
           )}
@@ -423,7 +460,7 @@ const Invoices = () => {
             size="large"
           >
             <div className="invoice-view">
-              <div className="invoice-actions" style={{ marginBottom: '16px', display: 'flex', gap: '8px' }}>
+              <div className="invoice-actions" style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 <Button
                   variant="primary"
                   size="small"
@@ -437,6 +474,13 @@ const Invoices = () => {
                   onClick={() => printInvoice(selectedInvoice, 'slip')}
                 >
                   <FiPrinter /> Print Slip
+                </Button>
+                <Button
+                  variant="danger"
+                  size="small"
+                  onClick={() => handleDeleteInvoice(selectedInvoice)}
+                >
+                  <FiTrash2 /> Delete
                 </Button>
               </div>
               
