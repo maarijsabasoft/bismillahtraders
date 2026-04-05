@@ -10,7 +10,7 @@ import { mongoCrudErrorMessage } from '../../utils/mongoErrors';
 import './Products.css';
 
 const Products = () => {
-  const { db, isReady, dbMode } = useDatabase();
+  const { db, isReady, dbMode, dataRevision } = useDatabase();
   const [products, setProducts] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,7 +34,7 @@ const Products = () => {
       loadProducts();
       loadCompanies();
     }
-  }, [db, isReady]);
+  }, [db, isReady, dataRevision]);
 
   const loadCompanies = async () => {
     try {

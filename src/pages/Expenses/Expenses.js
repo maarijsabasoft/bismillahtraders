@@ -9,7 +9,7 @@ import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
 import './Expenses.css';
 
 const Expenses = () => {
-  const { db, isReady } = useDatabase();
+  const { db, isReady, dataRevision } = useDatabase();
   const [expenses, setExpenses] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -24,7 +24,7 @@ const Expenses = () => {
     if (isReady && db) {
       loadExpenses();
     }
-  }, [db, isReady]);
+  }, [db, isReady, dataRevision]);
 
   const loadExpenses = async () => {
     try {

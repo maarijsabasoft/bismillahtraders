@@ -210,7 +210,7 @@ const InvoiceSlip = ({ invoice }) => (
 );
 
 const Invoices = () => {
-  const { db, isReady } = useDatabase();
+  const { db, isReady, dataRevision } = useDatabase();
   const [invoices, setInvoices] = useState([]);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -220,7 +220,7 @@ const Invoices = () => {
     if (isReady && db) {
       loadInvoices();
     }
-  }, [db, isReady]);
+  }, [db, isReady, dataRevision]);
 
   const loadInvoices = async () => {
     try {

@@ -7,7 +7,7 @@ import Table from '../../components/Table/Table';
 import './Reports.css';
 
 const Reports = () => {
-  const { db, isReady } = useDatabase();
+  const { db, isReady, dataRevision } = useDatabase();
   const [reportType, setReportType] = useState('daily');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
@@ -93,7 +93,7 @@ const Reports = () => {
     if (isReady && db) {
       generateReport();
     }
-  }, [isReady, db, generateReport]);
+  }, [isReady, db, generateReport, dataRevision]);
 
   const columns = [
     { key: 'invoice_number', label: 'Invoice #', width: '15%' },

@@ -4,7 +4,7 @@ import Card from '../../components/Card/Card';
 import './Dashboard.css';
 
 const Dashboard = () => {
-  const { db, isReady } = useDatabase();
+  const { db, isReady, dataRevision } = useDatabase();
   const [stats, setStats] = useState({
     totalSales: 0,
     totalCustomers: 0,
@@ -64,7 +64,7 @@ const Dashboard = () => {
     };
 
     loadStats();
-  }, [db, isReady]);
+  }, [db, isReady, dataRevision]);
 
   const statCards = [
     { label: "Today's Sales", value: `Rs. ${stats.todaySales.toLocaleString()}`, color: '#123056' },

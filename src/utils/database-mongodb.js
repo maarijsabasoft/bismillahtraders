@@ -2,6 +2,7 @@
 // Fast, reliable, no timeouts - perfect for web applications
 
 import { getAdminUsername, getAdminPassword } from './authCredentials';
+import { emitDataMutation } from './dataSync';
 
 // Get API URL
 function getApiUrl() {
@@ -109,6 +110,153 @@ function parseSQL(sql) {
   else if (updateMatch) tableName = updateMatch[1];
   
   return { tableName, sql: upperSQL };
+}
+
+async function mongoAggregateApi(authToken, coll, pipeline) {
+  const response = await fetchWithTimeout(API_BASE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Basic ${authToken}`,
+    },
+    body: JSON.stringify({
+      method: 'aggregate',
+      collection: coll,
+      filter: {},
+      data: { pipeline },
+    }),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    let err;
+    try {
+      err = JSON.parse(errorText);
+    } catch {
+      err = { message: errorText };
+    }
+    throw new Error(err.message || err.error || `HTTP ${response.status}`);
+  }
+  const result = await response.json();
+  return result.data || [];
+}
+
+async function mongoCountApi(authToken, coll, filter) {
+  const response = await fetchWithTimeout(API_BASE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Basic ${authToken}`,
+    },
+    body: JSON.stringify({
+      method: 'count',
+      collection: coll,
+      filter: filter || {},
+    }),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    let err;
+    try {
+      err = JSON.parse(errorText);
+    } catch {
+      err = { message: errorText };
+    }
+    throw new Error(err.message || err.error || `HTTP ${response.status}`);
+  }
+  const result = await response.json();
+  return typeof result.data === 'number' ? result.data : 0;
+}
+
+/** Map Dashboard-style scalar SQL to Mongo — returns undefined if not a known pattern. */
+async function tryMongoDashboardScalar(sql, flatParams, collection, authToken) {
+  const norm = sql.replace(/\s+/g, ' ').trim();
+
+  const sumField = async (coll, field) => {
+    const rows = await mongoAggregateApi(authToken, coll, [
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: {
+              $convert: {
+                input: `$${field}`,
+                to: 'double',
+                onError: 0,
+                onNull: 0,
+              },
+            },
+          },
+        },
+      },
+    ]);
+    return Number(rows[0]?.total) || 0;
+  };
+
+  if (/^SELECT SUM\(final_amount\) AS total FROM sales$/i.test(norm)) {
+    const total = await sumField(collection, 'final_amount');
+    return { total };
+  }
+
+  if (
+    /^SELECT SUM\(final_amount\) AS total FROM sales WHERE date\(sale_date\) = date\(\?\)$/i.test(
+      norm
+    )
+  ) {
+    const day = flatParams[0];
+    if (!day) return { total: 0 };
+    const rows = await mongoAggregateApi(authToken, collection, [
+      {
+        $addFields: {
+          _saleDay: { $substrBytes: [{ $toString: { $ifNull: ['$sale_date', ''] } }, 0, 10] },
+        },
+      },
+      { $match: { _saleDay: day } },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: {
+              $convert: {
+                input: '$final_amount',
+                to: 'double',
+                onError: 0,
+                onNull: 0,
+              },
+            },
+          },
+        },
+      },
+    ]);
+    return { total: Number(rows[0]?.total) || 0 };
+  }
+
+  if (/^SELECT COUNT\(\*\) AS count FROM customers$/i.test(norm)) {
+    const count = await mongoCountApi(authToken, collection, {});
+    return { count };
+  }
+
+  if (/^SELECT COUNT\(\*\) AS count FROM products WHERE is_active = 1$/i.test(norm)) {
+    const count = await mongoCountApi(authToken, collection, { is_active: { $in: [1, true] } });
+    return { count };
+  }
+
+  if (
+    /^SELECT COUNT\(\*\) AS count FROM stock_levels WHERE quantity <= low_stock_threshold$/i.test(
+      norm
+    )
+  ) {
+    const count = await mongoCountApi(authToken, collection, {
+      $expr: { $lte: ['$quantity', '$low_stock_threshold'] },
+    });
+    return { count };
+  }
+
+  if (/^SELECT SUM\(outstanding_balance\) AS total FROM customers$/i.test(norm)) {
+    const total = await sumField(collection, 'outstanding_balance');
+    return { total };
+  }
+
+  return undefined;
 }
 
 // Database wrapper with better-sqlite3-like API for MongoDB
@@ -261,7 +409,28 @@ class MongoDatabaseWrapper {
           }
 
           const result = await response.json();
-          return result.data;
+          const payload = result.data;
+
+          if (method === 'updateOne' && payload && payload.matchedCount === 0) {
+            throw new Error(
+              'Update failed: no document matched (wrong id or data was deleted).'
+            );
+          }
+          if (method === 'deleteOne' && payload && payload.changes === 0) {
+            throw new Error('Delete failed: no document matched.');
+          }
+
+          if (
+            method === 'insertOne' ||
+            method === 'updateOne' ||
+            method === 'deleteOne' ||
+            method === 'deleteMany' ||
+            method === 'insertMany'
+          ) {
+            emitDataMutation({ collection, method });
+          }
+
+          return payload;
         } catch (error) {
           console.error('MongoDB: Database run error:', error.message, sql);
           throw error;
@@ -275,7 +444,19 @@ class MongoDatabaseWrapper {
           }
 
           const flatParams = params.length > 0 && Array.isArray(params[0]) ? params[0] : params;
-          
+
+          if (collection) {
+            const dashboardRow = await tryMongoDashboardScalar(
+              sql,
+              flatParams,
+              collection,
+              authToken
+            );
+            if (dashboardRow !== undefined) {
+              return dashboardRow;
+            }
+          }
+
           // Parse SELECT * FROM table WHERE col = ?
           const whereMatch = sql.match(/WHERE\s+(\w+)\s*=\s*\?/i);
           const filter = {};

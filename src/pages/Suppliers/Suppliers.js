@@ -9,7 +9,7 @@ import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
 import './Suppliers.css';
 
 const Suppliers = () => {
-  const { db, isReady } = useDatabase();
+  const { db, isReady, dataRevision } = useDatabase();
   const [suppliers, setSuppliers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
@@ -24,7 +24,7 @@ const Suppliers = () => {
     if (isReady && db) {
       loadSuppliers();
     }
-  }, [db, isReady]);
+  }, [db, isReady, dataRevision]);
 
   const loadSuppliers = async () => {
     try {

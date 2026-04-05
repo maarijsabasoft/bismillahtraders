@@ -9,7 +9,7 @@ import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
 import './Staff.css';
 
 const Staff = () => {
-  const { db, isReady } = useDatabase();
+  const { db, isReady, dataRevision } = useDatabase();
   const [staff, setStaff] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
@@ -27,7 +27,7 @@ const Staff = () => {
     if (isReady && db) {
       loadStaff();
     }
-  }, [db, isReady]);
+  }, [db, isReady, dataRevision]);
 
   const loadStaff = async () => {
     try {

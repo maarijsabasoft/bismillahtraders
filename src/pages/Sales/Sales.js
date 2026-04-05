@@ -9,7 +9,7 @@ import { FiPlus, FiX } from 'react-icons/fi';
 import './Sales.css';
 
 const Sales = () => {
-  const { db, isReady } = useDatabase();
+  const { db, isReady, dataRevision } = useDatabase();
   const [sales, setSales] = useState([]);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -27,7 +27,7 @@ const Sales = () => {
       loadProducts();
       loadCustomers();
     }
-  }, [db, isReady]);
+  }, [db, isReady, dataRevision]);
 
   const loadProducts = async () => {
     try {

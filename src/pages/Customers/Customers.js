@@ -9,7 +9,7 @@ import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
 import './Customers.css';
 
 const Customers = () => {
-  const { db, isReady } = useDatabase();
+  const { db, isReady, dataRevision } = useDatabase();
   const [customers, setCustomers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
@@ -25,7 +25,7 @@ const Customers = () => {
     if (isReady && db) {
       loadCustomers();
     }
-  }, [db, isReady]);
+  }, [db, isReady, dataRevision]);
 
   const loadCustomers = async () => {
     try {

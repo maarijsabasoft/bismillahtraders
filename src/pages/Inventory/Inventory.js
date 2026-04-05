@@ -9,7 +9,7 @@ import { FiPlus } from 'react-icons/fi';
 import './Inventory.css';
 
 const Inventory = () => {
-  const { db, isReady } = useDatabase();
+  const { db, isReady, dataRevision } = useDatabase();
   const [stockLevels, setStockLevels] = useState([]);
   const [products, setProducts] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,7 +27,7 @@ const Inventory = () => {
       loadStockLevels();
       loadProducts();
     }
-  }, [db, isReady]);
+  }, [db, isReady, dataRevision]);
 
   const loadProducts = async () => {
     try {

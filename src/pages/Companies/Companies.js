@@ -11,7 +11,7 @@ import { mongoCrudErrorMessage } from '../../utils/mongoErrors';
 import './Companies.css';
 
 const Companies = () => {
-  const { db, isReady, dbMode } = useDatabase();
+  const { db, isReady, dbMode, dataRevision } = useDatabase();
   const [companies, setCompanies] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
@@ -21,7 +21,7 @@ const Companies = () => {
     if (isReady && db) {
       loadCompanies();
     }
-  }, [db, isReady]);
+  }, [db, isReady, dataRevision]);
 
   const loadCompanies = async () => {
     try {

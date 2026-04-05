@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { initDatabase, getDatabase, saveDatabase } from '../utils/database';
 import { initMongoDatabase, getMongoDatabase } from '../utils/database-mongodb';
 import { initHybridDatabase, getHybridDatabase } from '../utils/database-hybrid';
+import { subscribeDataMutation } from '../utils/dataSync';
 
 const DatabaseContext = createContext();
 
@@ -49,6 +50,26 @@ export const DatabaseProvider = ({ children }) => {
   const [db, setDb] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [dbMode, setDbMode] = useState('local'); // 'local', 'vercel', or 'hybrid'
+  /** Bumped on cross-tab mutations (Mongo) and when the tab becomes visible again — refetch lists/stats. */
+  const [dataRevision, setDataRevision] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    return subscribeDataMutation(() => {
+      setDataRevision((n) => n + 1);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        setDataRevision((n) => n + 1);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
 
   useEffect(() => {
     const setupDatabase = async () => {
@@ -139,7 +160,7 @@ export const DatabaseProvider = ({ children }) => {
   }, [isReady]);
 
   return (
-    <DatabaseContext.Provider value={{ db, isReady, dbMode }}>
+    <DatabaseContext.Provider value={{ db, isReady, dbMode, dataRevision }}>
       {children}
     </DatabaseContext.Provider>
   );
