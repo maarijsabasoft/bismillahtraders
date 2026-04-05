@@ -80,6 +80,58 @@ function lineProductName(item) {
   return '\u2014';
 }
 
+/** Mongo SQL wrapper ignores JOIN — sale_items rows often lack product_name; resolve from products. */
+function productIdKeys(pid) {
+  if (pid == null) return [];
+  const keys = new Set();
+  const s = String(pid).trim();
+  if (s) keys.add(s);
+  const n = parseInt(s, 10);
+  if (!Number.isNaN(n) && String(n) === s) keys.add(String(n));
+  return [...keys];
+}
+
+async function enrichInvoiceItemsWithProductNames(db, items) {
+  if (!Array.isArray(items) || items.length === 0) return items;
+
+  const missing = items.some(
+    (row) =>
+      !(row.product_name || row.name || row.productName) &&
+      (row.product_id != null || row.productId != null)
+  );
+  if (!missing) return items;
+
+  let productRows = [];
+  try {
+    productRows = await db.prepare('SELECT * FROM products').all();
+  } catch (e) {
+    console.warn('Invoices: could not load products for name enrichment', e);
+    return items;
+  }
+
+  const nameByKey = new Map();
+  for (const p of Array.isArray(productRows) ? productRows : []) {
+    const nm = p.name || p.product_name;
+    if (nm == null || String(nm).trim() === '') continue;
+    const id = p.id ?? p._id;
+    for (const k of productIdKeys(id)) {
+      nameByKey.set(k, String(nm).trim());
+    }
+  }
+
+  return items.map((row) => {
+    const existing = row.product_name || row.name || row.productName;
+    if (existing != null && String(existing).trim() !== '') return row;
+    const pid = row.product_id ?? row.productId;
+    if (pid == null) return row;
+    for (const k of productIdKeys(pid)) {
+      const nm = nameByKey.get(k);
+      if (nm) return { ...row, product_name: nm };
+    }
+    return row;
+  });
+}
+
 // A4 Professional Invoice Component
 const InvoiceA4 = ({ invoice }) => {
   const saleD = parseInvoiceDate(invoice);
@@ -364,7 +416,8 @@ const Invoices = () => {
         WHERE si.sale_id = ?
       `).all(saleKey);
     const items = filterItemsForInvoice(invoice, raw);
-    return { ...invoice, items };
+    const itemsWithNames = await enrichInvoiceItemsWithProductNames(db, items);
+    return { ...invoice, items: itemsWithNames };
   };
 
   const viewInvoice = async (invoice) => {
