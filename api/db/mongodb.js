@@ -6,19 +6,33 @@ import { getMongoUriAndDbName } from './mongo-env.js';
 
 let cachedClient = null;
 let cachedDb = null;
+/** One shared in-flight connect so parallel API calls (e.g. dashboard) do not open N TLS handshakes at once. */
+let connectPromise = null;
 
 async function getMongoClient() {
   if (cachedClient) {
     return cachedClient;
   }
 
-  const { uri, dbName } = getMongoUriAndDbName();
-  const client = new MongoClient(uri);
-  await client.connect();
-  cachedClient = client;
-  cachedDb = client.db(dbName);
+  if (!connectPromise) {
+    connectPromise = (async () => {
+      const { uri, dbName } = getMongoUriAndDbName();
+      const client = new MongoClient(uri);
+      await client.connect();
+      cachedClient = client;
+      cachedDb = client.db(dbName);
+    })();
+  }
 
-  return cachedClient;
+  try {
+    await connectPromise;
+    return cachedClient;
+  } catch (err) {
+    connectPromise = null;
+    cachedClient = null;
+    cachedDb = null;
+    throw err;
+  }
 }
 
 async function getDatabase() {

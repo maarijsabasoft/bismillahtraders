@@ -37,49 +37,69 @@ const Companies = () => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    try {
-      const now = new Date().toISOString();
-      if (editingCompany) {
+    const name = formData.name.trim();
+    const description = formData.description || null;
+    const now = new Date().toISOString();
+
+    if (editingCompany) {
+      const ed = editingCompany;
+      const id = ed.id;
+      const snapshot = companies.map((c) => ({ ...c }));
+      setCompanies((prev) =>
+        prev.map((c) =>
+          String(c.id) === String(id)
+            ? { ...c, name, description, updated_at: now }
+            : c
+        )
+      );
+      handleCloseModal();
+      try {
         await db.prepare(`
           UPDATE companies 
           SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP 
           WHERE id = ?
-        `).run(formData.name, formData.description || null, editingCompany.id);
+        `).run(name, description, id);
+      } catch (error) {
+        console.error('Error saving company:', error);
+        setCompanies(snapshot);
+        setEditingCompany(ed);
+        setFormData({ name, description: description || '' });
+        setIsModalOpen(true);
+        alert(
+          `Could not save company.\n\n${mongoCrudErrorMessage(error, dbMode, {
+            duplicateHint: 'A company with this name already exists. Use a different name.',
+          })}`
+        );
+      }
+      return;
+    }
+
+    const tempId = `__pending_${Date.now()}`;
+    setCompanies((prev) => [
+      { id: tempId, name, description, created_at: now, updated_at: now, __pending: true },
+      ...prev,
+    ]);
+    handleCloseModal();
+
+    try {
+      const out = await db
+        .prepare('INSERT INTO companies (name, description) VALUES (?, ?)')
+        .run(name, description);
+      const newId = out?.lastInsertRowid != null ? String(out.lastInsertRowid) : null;
+      if (newId) {
         setCompanies((prev) =>
           prev.map((c) =>
-            String(c.id) === String(editingCompany.id)
-              ? {
-                  ...c,
-                  name: formData.name.trim(),
-                  description: formData.description || null,
-                  updated_at: now,
-                }
+            c.id === tempId
+              ? { id: newId, name, description, created_at: now, updated_at: now }
               : c
           )
         );
       } else {
-        const out = await db
-          .prepare('INSERT INTO companies (name, description) VALUES (?, ?)')
-          .run(formData.name, formData.description || null);
-        const newId = out?.lastInsertRowid != null ? String(out.lastInsertRowid) : null;
-        if (newId) {
-          setCompanies((prev) => [
-            {
-              id: newId,
-              name: formData.name.trim(),
-              description: formData.description || null,
-              created_at: now,
-              updated_at: now,
-            },
-            ...prev,
-          ]);
-        } else {
-          await loadCompanies();
-        }
+        await loadCompanies();
       }
-      handleCloseModal();
     } catch (error) {
       console.error('Error saving company:', error);
+      setCompanies((prev) => prev.filter((c) => c.id !== tempId));
       alert(
         `Could not save company.\n\n${mongoCrudErrorMessage(error, dbMode, {
           duplicateHint: 'A company with this name already exists. Use a different name.',
@@ -95,12 +115,16 @@ const Companies = () => {
   };
 
   const handleDelete = async (id) => {
+    if (String(id).startsWith('__pending_')) return;
     if (window.confirm('Are you sure you want to delete this company?')) {
+      const snapshot = companies.map((c) => ({ ...c }));
+      const idStr = String(id);
+      setCompanies((prev) => prev.filter((c) => String(c.id) !== idStr));
       try {
         await db.prepare('DELETE FROM companies WHERE id = ?').run(id);
-        setCompanies((prev) => prev.filter((c) => String(c.id) !== String(id)));
       } catch (error) {
         console.error('Error deleting company:', error);
+        setCompanies(snapshot);
         alert(`Could not delete company.\n\n${mongoCrudErrorMessage(error, dbMode)}`);
       }
     }
@@ -136,30 +160,35 @@ const Companies = () => {
         <Table
           columns={columns}
           data={companies}
-          actions={(row) => (
-            <>
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEdit(row);
-                }}
-              >
-                <FiEdit2 />
-              </Button>
-              <Button
-                variant="danger"
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(row.id);
-                }}
-              >
-                <FiTrash2 />
-              </Button>
-            </>
-          )}
+          actions={(row) => {
+            const pending = String(row.id).startsWith('__pending_');
+            return (
+              <>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  disabled={pending}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(row);
+                  }}
+                >
+                  <FiEdit2 />
+                </Button>
+                <Button
+                  variant="danger"
+                  size="small"
+                  disabled={pending}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(row.id);
+                  }}
+                >
+                  <FiTrash2 />
+                </Button>
+              </>
+            );
+          }}
         />
       </Card>
 

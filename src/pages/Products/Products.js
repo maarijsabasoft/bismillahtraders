@@ -136,27 +136,55 @@ const Products = () => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.company_id) return;
 
-    try {
-      const data = {
-        ...formData,
-        purchase_price: parseFloat(formData.purchase_price) || 0,
-        sale_price: parseFloat(formData.sale_price) || 0,
-        tax_rate: parseFloat(formData.tax_rate) || 0,
-        discount_rate: parseFloat(formData.discount_rate) || 0,
-        is_active: formData.is_active ? 1 : 0
-      };
+    const data = {
+      ...formData,
+      purchase_price: parseFloat(formData.purchase_price) || 0,
+      sale_price: parseFloat(formData.sale_price) || 0,
+      tax_rate: parseFloat(formData.tax_rate) || 0,
+      discount_rate: parseFloat(formData.discount_rate) || 0,
+      is_active: formData.is_active ? 1 : 0,
+    };
 
-      const companyIdForDb = normalizeCompanyIdForDb(data.company_id);
-      if (dbMode === 'mongodb' && !companyIdForDb) {
-        alert('Please select a company.');
-        return;
-      }
+    const companyIdForDb = normalizeCompanyIdForDb(data.company_id);
+    if (dbMode === 'mongodb' && !companyIdForDb) {
+      alert('Please select a company.');
+      return;
+    }
 
-      const companyName =
-        companies.find((c) => String(c.id) === String(companyIdForDb))?.name ?? null;
-      const now = new Date().toISOString();
+    const companyName =
+      companies.find((c) => String(c.id) === String(companyIdForDb))?.name ?? null;
+    const now = new Date().toISOString();
 
-      if (editingProduct) {
+    const buildRow = (id, pending) => ({
+      id,
+      company_id: companyIdForDb,
+      company_name: companyName,
+      name: data.name,
+      sku: data.sku || null,
+      barcode: data.barcode || null,
+      category: data.category || null,
+      bottle_size: data.bottle_size || null,
+      purchase_price: data.purchase_price,
+      sale_price: data.sale_price,
+      tax_rate: data.tax_rate,
+      discount_rate: data.discount_rate,
+      is_active: data.is_active,
+      created_at: now,
+      updated_at: now,
+      ...(pending ? { __pending: true } : {}),
+    });
+
+    if (editingProduct) {
+      const ed = editingProduct;
+      const rollbackForm = { ...formData };
+      const snapshot = products.map((p) => ({ ...p }));
+      setProducts((prev) =>
+        prev.map((p) =>
+          String(p.id) === String(ed.id) ? { ...buildRow(p.id, false), created_at: p.created_at || now } : p
+        )
+      );
+      handleCloseModal();
+      try {
         await db.prepare(`
           UPDATE products 
           SET company_id = ?, name = ?, sku = ?, barcode = ?, category = ?,
@@ -167,71 +195,49 @@ const Products = () => {
           companyIdForDb, data.name, data.sku || null, data.barcode || null,
           data.category || null, data.bottle_size || null, data.purchase_price,
           data.sale_price, data.tax_rate, data.discount_rate, data.is_active,
-          editingProduct.id
+          ed.id
         );
+      } catch (error) {
+        console.error('Error saving product:', error);
+        setProducts(snapshot);
+        setEditingProduct(ed);
+        setFormData(rollbackForm);
+        setIsModalOpen(true);
+        alert(
+          `Could not save product.\n\n${mongoCrudErrorMessage(error, dbMode, {
+            duplicateHint: 'SKU must be unique. Clear SKU or use a different one.',
+          })}`
+        );
+      }
+      return;
+    }
+
+    const tempId = `__pending_${Date.now()}`;
+    setProducts((prev) => [buildRow(tempId, true), ...prev]);
+    handleCloseModal();
+
+    try {
+      const out = await db.prepare(`
+        INSERT INTO products 
+        (company_id, name, sku, barcode, category, bottle_size, purchase_price, 
+         sale_price, tax_rate, discount_rate, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        companyIdForDb, data.name, data.sku || null, data.barcode || null,
+        data.category || null, data.bottle_size || null, data.purchase_price,
+        data.sale_price, data.tax_rate, data.discount_rate, data.is_active
+      );
+      const newId = out?.lastInsertRowid != null ? String(out.lastInsertRowid) : null;
+      if (newId) {
         setProducts((prev) =>
-          prev.map((p) =>
-            String(p.id) === String(editingProduct.id)
-              ? {
-                  ...p,
-                  company_id: companyIdForDb,
-                  company_name: companyName,
-                  name: data.name,
-                  sku: data.sku || null,
-                  barcode: data.barcode || null,
-                  category: data.category || null,
-                  bottle_size: data.bottle_size || null,
-                  purchase_price: data.purchase_price,
-                  sale_price: data.sale_price,
-                  tax_rate: data.tax_rate,
-                  discount_rate: data.discount_rate,
-                  is_active: data.is_active,
-                  updated_at: now,
-                }
-              : p
-          )
+          prev.map((p) => (p.id === tempId ? { ...buildRow(newId, false) } : p))
         );
       } else {
-        const out = await db.prepare(`
-          INSERT INTO products 
-          (company_id, name, sku, barcode, category, bottle_size, purchase_price, 
-           sale_price, tax_rate, discount_rate, is_active)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          companyIdForDb, data.name, data.sku || null, data.barcode || null,
-          data.category || null, data.bottle_size || null, data.purchase_price,
-          data.sale_price, data.tax_rate, data.discount_rate, data.is_active
-        );
-        const newId = out?.lastInsertRowid != null ? String(out.lastInsertRowid) : null;
-        if (newId) {
-          setProducts((prev) => [
-            {
-              id: newId,
-              company_id: companyIdForDb,
-              company_name: companyName,
-              name: data.name,
-              sku: data.sku || null,
-              barcode: data.barcode || null,
-              category: data.category || null,
-              bottle_size: data.bottle_size || null,
-              purchase_price: data.purchase_price,
-              sale_price: data.sale_price,
-              tax_rate: data.tax_rate,
-              discount_rate: data.discount_rate,
-              is_active: data.is_active,
-              created_at: now,
-              updated_at: now,
-            },
-            ...prev,
-          ]);
-        } else {
-          await loadProducts();
-        }
+        await loadProducts();
       }
-
-      handleCloseModal();
     } catch (error) {
       console.error('Error saving product:', error);
+      setProducts((prev) => prev.filter((p) => p.id !== tempId));
       alert(
         `Could not save product.\n\n${mongoCrudErrorMessage(error, dbMode, {
           duplicateHint: 'SKU must be unique. Clear SKU or use a different one.',
@@ -265,12 +271,16 @@ const Products = () => {
   };
 
   const handleDelete = async (id) => {
+    if (String(id).startsWith('__pending_')) return;
     if (window.confirm('Are you sure you want to delete this product?')) {
+      const snapshot = products.map((p) => ({ ...p }));
+      const idStr = String(id);
+      setProducts((prev) => prev.filter((p) => String(p.id) !== idStr));
       try {
         await db.prepare('DELETE FROM products WHERE id = ?').run(id);
-        setProducts((prev) => prev.filter((p) => String(p.id) !== String(id)));
       } catch (error) {
         console.error('Error deleting product:', error);
+        setProducts(snapshot);
         alert(`Could not delete product.\n\n${mongoCrudErrorMessage(error, dbMode)}`);
       }
     }
@@ -348,30 +358,35 @@ const Products = () => {
         <Table
           columns={columns}
           data={products}
-          actions={(row) => (
-            <>
-              <Button
-                variant="secondary"
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEdit(row);
-                }}
-              >
-                <FiEdit2 />
-              </Button>
-              <Button
-                variant="danger"
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(row.id);
-                }}
-              >
-                <FiTrash2 />
-              </Button>
-            </>
-          )}
+          actions={(row) => {
+            const pending = String(row.id).startsWith('__pending_');
+            return (
+              <>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  disabled={pending}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(row);
+                  }}
+                >
+                  <FiEdit2 />
+                </Button>
+                <Button
+                  variant="danger"
+                  size="small"
+                  disabled={pending}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(row.id);
+                  }}
+                >
+                  <FiTrash2 />
+                </Button>
+              </>
+            );
+          }}
         />
       </Card>
 
