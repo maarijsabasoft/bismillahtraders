@@ -128,27 +128,30 @@ const Inventory = () => {
       const productsWithData = products.map(product => {
         const productId = product.id?.toString() || product._id?.toString() || product.id || product._id;
         const companyId = product.company_id?.toString() || product.companyId?.toString() || product.company_id || product.companyId;
-        
-        // Get calculated stock from transactions (source of truth)
-        // Default to 0 if no transactions exist
-        let currentStock = calculatedStock[productId];
-        if (currentStock === undefined && productId) {
-          const idNum = parseInt(String(productId));
-          if (!isNaN(idNum)) {
-            currentStock = calculatedStock[idNum] || calculatedStock[String(idNum)];
-          }
-        }
-        // If still undefined (no transactions), default to 0
-        if (currentStock === undefined) {
-          currentStock = 0;
-        }
-        
-        // Get stock metadata (threshold, updated_at) from stock_levels
+
+        // Stock metadata (threshold, updated_at) from stock_levels
         let stock = stockMap[productId];
         if (!stock && productId) {
-          const idNum = parseInt(String(productId));
-          if (!isNaN(idNum)) {
+          const idNum = parseInt(String(productId), 10);
+          if (!Number.isNaN(idNum)) {
             stock = stockMap[idNum] || stockMap[String(idNum)];
+          }
+        }
+
+        /* Prefer stock_levels.quantity (updated by Sales / Inventory) — avoids product_id key drift vs transaction rows. */
+        let currentStock;
+        if (stock != null && stock.quantity != null) {
+          currentStock = parseInt(stock.quantity, 10) || 0;
+        } else {
+          currentStock = calculatedStock[productId];
+          if (currentStock === undefined && productId) {
+            const idNum = parseInt(String(productId), 10);
+            if (!Number.isNaN(idNum)) {
+              currentStock = calculatedStock[idNum] || calculatedStock[String(idNum)];
+            }
+          }
+          if (currentStock === undefined) {
+            currentStock = 0;
           }
         }
         

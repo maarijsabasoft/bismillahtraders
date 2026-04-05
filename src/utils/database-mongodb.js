@@ -221,14 +221,39 @@ async function tryMongoDashboardScalar(sql, flatParams, collection, authToken) {
   if (
     /^SELECT SUM\(final_amount\) AS total FROM sales WHERE date\(sale_date\) = date\(\?\)$/i.test(
       norm
+    ) ||
+    /^SELECT SUM\(final_amount\) AS total FROM sales WHERE strftime\('%Y-%m-%d', sale_date, 'localtime'\) = \?$/i.test(
+      norm
     )
   ) {
     const day = flatParams[0];
     if (!day) return { total: 0 };
+    const tz =
+      typeof Intl !== 'undefined'
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+        : 'UTC';
     const rows = await mongoAggregateApi(authToken, collection, [
       {
         $addFields: {
-          _saleDay: { $substrBytes: [{ $toString: { $ifNull: ['$sale_date', ''] } }, 0, 10] },
+          _sd: {
+            $convert: {
+              input: { $ifNull: ['$sale_date', '$saleDate'] },
+              to: 'date',
+              onError: null,
+              onNull: null,
+            },
+          },
+        },
+      },
+      {
+        $addFields: {
+          _saleDay: {
+            $cond: {
+              if: { $ne: ['$_sd', null] },
+              then: { $dateToString: { format: '%Y-%m-%d', date: '$_sd', timezone: tz } },
+              else: '',
+            },
+          },
         },
       },
       { $match: { _saleDay: day } },
@@ -680,6 +705,10 @@ class MongoDatabaseWrapper {
     const now = new Date();
     const today = localCalendarDateParts(now).iso;
     const salesTrendDays = buildLocalSalesTrendDays(7);
+    const timezone =
+      typeof Intl !== 'undefined'
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+        : 'UTC';
     const response = await fetchWithTimeout(API_BASE_URL, {
       method: 'POST',
       headers: {
@@ -690,7 +719,7 @@ class MongoDatabaseWrapper {
         method: 'dashboardStats',
         collection: 'dashboard',
         filter: {},
-        data: { today, salesTrendDays },
+        data: { today, salesTrendDays, timezone },
       }),
     });
 

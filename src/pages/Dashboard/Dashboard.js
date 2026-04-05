@@ -91,7 +91,7 @@ const Dashboard = () => {
         db
           .prepare(`
           SELECT SUM(final_amount) as total FROM sales 
-          WHERE date(sale_date) = date(?)
+          WHERE strftime('%Y-%m-%d', sale_date, 'localtime') = ?
         `)
           .get(today),
         db.prepare('SELECT COUNT(*) as count FROM customers').get(),
@@ -109,10 +109,10 @@ const Dashboard = () => {
       try {
         const trendRows = await db
           .prepare(`
-          SELECT strftime('%Y-%m-%d', sale_date) as day,
+          SELECT strftime('%Y-%m-%d', sale_date, 'localtime') as day,
                  COALESCE(SUM(final_amount), 0) as total
           FROM sales
-          GROUP BY strftime('%Y-%m-%d', sale_date)
+          GROUP BY strftime('%Y-%m-%d', sale_date, 'localtime')
         `)
           .all();
         salesByDay = buildLast7DaysSalesByDay(trendRows);

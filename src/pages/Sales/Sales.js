@@ -212,13 +212,14 @@ const Sales = () => {
       }
 
       const invoiceNumber = `INV-${Date.now()}`;
+      const saleDateIso = new Date().toISOString();
 
       const saleResult = await db
         .prepare(`
         INSERT INTO sales 
         (invoice_number, customer_id, total_amount, discount_amount, tax_amount, 
-         final_amount, payment_method, payment_status, notes, cash_amount, bank_amount, bank_account_label)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         final_amount, payment_method, payment_status, notes, cash_amount, bank_amount, bank_account_label, sale_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
         .run(
           invoiceNumber,
@@ -232,7 +233,8 @@ const Sales = () => {
           formData.notes || null,
           cashAmt,
           bankAmt,
-          bankLabel || null
+          bankLabel || null,
+          saleDateIso
         );
 
       const saleId = saleResult.lastInsertRowid;

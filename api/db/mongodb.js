@@ -85,6 +85,9 @@ async function runDashboardStats(db, data = {}) {
       ? data.today
       : new Date().toISOString().split('T')[0];
 
+  const tz =
+    typeof data.timezone === 'string' && data.timezone.length > 1 ? data.timezone : 'UTC';
+
   let dayKeys;
   if (
     Array.isArray(data.salesTrendDays) &&
@@ -101,14 +104,34 @@ async function runDashboardStats(db, data = {}) {
     }
   }
   const trendStart = dayKeys[0];
+  const trendEnd = dayKeys[dayKeys.length - 1];
 
-  const addDayKey = {
-    $addFields: {
-      _dayKey: {
-        $substrBytes: [{ $toString: { $ifNull: ['$sale_date', ''] } }, 0, 10],
+  /** Calendar YYYY-MM-DD in the user's timezone (fixes Today vs UTC substring mismatch). */
+  const addDayKeyStages = [
+    {
+      $addFields: {
+        _sd: {
+          $convert: {
+            input: { $ifNull: ['$sale_date', '$saleDate'] },
+            to: 'date',
+            onError: null,
+            onNull: null,
+          },
+        },
       },
     },
-  };
+    {
+      $addFields: {
+        _dayKey: {
+          $cond: {
+            if: { $ne: ['$_sd', null] },
+            then: { $dateToString: { format: '%Y-%m-%d', date: '$_sd', timezone: tz } },
+            else: '',
+          },
+        },
+      },
+    },
+  ];
 
   const sales = db.collection('sales');
   const customers = db.collection('customers');
@@ -127,7 +150,7 @@ async function runDashboardStats(db, data = {}) {
     sales.aggregate([{ $group: { _id: null, total: sumFinalAmount() } }]).toArray(),
     sales
       .aggregate([
-        addDayKey,
+        ...addDayKeyStages,
         { $match: { _dayKey: today } },
         { $group: { _id: null, total: sumFinalAmount() } },
       ])
@@ -145,8 +168,12 @@ async function runDashboardStats(db, data = {}) {
     customers.aggregate([{ $group: { _id: null, total: sumOutstandingBalance() } }]).toArray(),
     sales
       .aggregate([
-        addDayKey,
-        { $match: { _dayKey: { $gte: trendStart } } },
+        ...addDayKeyStages,
+        {
+          $match: {
+            _dayKey: { $gte: trendStart, $lte: trendEnd },
+          },
+        },
         { $group: { _id: '$_dayKey', total: sumFinalAmount() } },
         { $sort: { _id: 1 } },
       ])
@@ -216,6 +243,9 @@ export default async function handler(req, res) {
           created_at: data.created_at || now,
           updated_at: data.updated_at || now,
         };
+        if (collection === 'sales' && insertData.sale_date == null && insertData.saleDate == null) {
+          insertData.sale_date = new Date();
+        }
         const payloadKeys = Object.keys(data || {}).filter(
           (k) => k !== 'created_at' && k !== 'updated_at'
         );
