@@ -55,9 +55,21 @@ export const DatabaseProvider = ({ children }) => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
-    return subscribeDataMutation(() => {
-      setDataRevision((n) => n + 1);
-    });
+    let scheduled = false;
+    const bump = () => {
+      if (scheduled) return;
+      scheduled = true;
+      queueMicrotask(() => {
+        scheduled = false;
+        setDataRevision((n) => n + 1);
+      });
+    };
+    window.addEventListener('bismillah-traders-db-changed', bump);
+    const unsub = subscribeDataMutation(bump);
+    return () => {
+      window.removeEventListener('bismillah-traders-db-changed', bump);
+      unsub();
+    };
   }, []);
 
   useEffect(() => {

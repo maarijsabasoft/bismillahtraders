@@ -27,6 +27,13 @@ function getChannel() {
 export function emitDataMutation(meta = {}) {
   if (typeof window === 'undefined') return;
   const payload = { t: Date.now(), ...meta };
+  // Same document/tab: storage events do not fire for the tab that called setItem, and
+  // some environments are flaky with BroadcastChannel self-delivery — always dispatch locally.
+  try {
+    window.dispatchEvent(new CustomEvent('bismillah-traders-db-changed', { detail: payload }));
+  } catch {
+    /* ignore */
+  }
   const ch = getChannel();
   if (ch) {
     try {

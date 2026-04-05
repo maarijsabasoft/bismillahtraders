@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useDatabase } from '../../context/DatabaseContext';
 import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
@@ -12,16 +13,25 @@ import './Companies.css';
 
 const Companies = () => {
   const { db, isReady, dbMode, dataRevision } = useDatabase();
+  const location = useLocation();
+  const mountedRef = useRef(true);
   const [companies, setCompanies] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
 
   useEffect(() => {
-    if (isReady && db) {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isReady && db && location.pathname === '/companies') {
       loadCompanies();
     }
-  }, [db, isReady, dataRevision]);
+  }, [db, isReady, dataRevision, location.pathname]);
 
   const loadCompanies = async () => {
     try {
@@ -86,25 +96,28 @@ const Companies = () => {
         .prepare('INSERT INTO companies (name, description) VALUES (?, ?)')
         .run(name, description);
       const newId = out?.lastInsertRowid != null ? String(out.lastInsertRowid) : null;
-      if (newId) {
-        setCompanies((prev) =>
-          prev.map((c) =>
-            c.id === tempId
-              ? { id: newId, name, description, created_at: now, updated_at: now }
-              : c
-          )
-        );
-      } else {
-        await loadCompanies();
+      if (mountedRef.current) {
+        if (newId) {
+          setCompanies((prev) =>
+            prev.map((c) =>
+              c.id === tempId
+                ? { id: newId, name, description, created_at: now, updated_at: now }
+                : c
+            )
+          );
+        } else {
+          await loadCompanies();
+        }
       }
     } catch (error) {
       console.error('Error saving company:', error);
-      setCompanies((prev) => prev.filter((c) => c.id !== tempId));
-      alert(
-        `Could not save company.\n\n${mongoCrudErrorMessage(error, dbMode, {
-          duplicateHint: 'A company with this name already exists. Use a different name.',
-        })}`
-      );
+      if (mountedRef.current) {
+        setCompanies((prev) => prev.filter((c) => c.id !== tempId));
+      }
+      const msg = mongoCrudErrorMessage(error, dbMode, {
+        duplicateHint: 'A company with this name already exists. Use a different name.',
+      });
+      setTimeout(() => alert(`Could not save company.\n\n${msg}`), 0);
     }
   };
 

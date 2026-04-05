@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useDatabase } from '../../context/DatabaseContext';
 import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
@@ -11,6 +12,7 @@ import './Products.css';
 
 const Products = () => {
   const { db, isReady, dbMode, dataRevision } = useDatabase();
+  const location = useLocation();
   const [products, setProducts] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,11 +32,11 @@ const Products = () => {
   });
 
   useEffect(() => {
-    if (isReady && db) {
+    if (isReady && db && location.pathname === '/products') {
       loadProducts();
       loadCompanies();
     }
-  }, [db, isReady, dataRevision]);
+  }, [db, isReady, dataRevision, location.pathname]);
 
   const loadCompanies = async () => {
     try {
@@ -45,6 +47,11 @@ const Products = () => {
       setCompanies([]);
     }
   };
+
+  useEffect(() => {
+    if (!isReady || !db || !isModalOpen) return;
+    loadCompanies();
+  }, [isModalOpen, isReady, db, dataRevision]);
 
   const normalizeCompanyIdForDb = (raw) => {
     if (dbMode === 'mongodb') {
