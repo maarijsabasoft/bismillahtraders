@@ -359,52 +359,87 @@
   }
 
   .print-container {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
     position: absolute;
     left: 0;
     top: 0;
-    width: 100%;
+    width: 100% !important;
+    min-height: 100%;
+    box-sizing: border-box;
   }
 
   .invoice-print {
-    display: none;
+    display: none !important;
+    width: 100%;
+    justify-content: center;
+    align-items: flex-start;
   }
 
   .invoice-print.active {
-    display: block;
+    display: flex !important;
+    justify-content: center;
+    width: 100%;
   }
 
-  /* A4 Print Styles */
+  /* A4 — centered, uses printable width */
   .invoice-a4-print.active {
     page-break-after: always;
   }
 
   .invoice-a4-print.active .invoice-a4 {
-    max-width: 210mm;
-    margin: 0;
-    padding: 20mm;
+    width: 100%;
+    max-width: 190mm;
+    margin: 0 auto !important;
+    padding: 12mm 10mm;
+    box-sizing: border-box;
     box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
-  /* Slip Print Styles */
+  /* Slip — centered (not stuck in corner); thermal-friendly width */
   .invoice-slip-print.active {
     page-break-after: always;
+    page: slip;
   }
 
   .invoice-slip-print.active .invoice-slip {
-    max-width: 80mm;
-    margin: 0;
-    padding: 10mm 8mm;
+    width: 80mm !important;
+    min-width: 72mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 6mm 5mm !important;
+    box-sizing: border-box;
     box-shadow: none;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .invoice-slip-print.active .invoice-slip .slip-header h2 {
+    font-size: 16pt !important;
+  }
+
+  .invoice-slip-print.active .invoice-slip .slip-row,
+  .invoice-slip-print.active .invoice-slip .slip-item-name {
+    font-size: 10pt !important;
+  }
+
+  .invoice-slip-print.active .invoice-slip .slip-total-final {
+    font-size: 13pt !important;
   }
 
   @page {
-    size: A4;
-    margin: 0;
+    size: A4 portrait;
+    margin: 10mm;
   }
 
-  @page :first {
-    margin: 0;
+  @page slip {
+    size: 80mm auto;
+    margin: 2mm;
   }
 }
 

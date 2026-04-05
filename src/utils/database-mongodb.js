@@ -112,6 +112,26 @@ function parseSQL(sql) {
   return { tableName, sql: upperSQL };
 }
 
+/**
+ * Build Mongo filter from first `col = ?` or `alias.col = ?` in WHERE (JOIN queries use si.sale_id).
+ * Without this, `WHERE si.sale_id = ?` was parsed as field `si` and the filter was dropped,
+ * returning every row in the collection.
+ */
+function buildFilterFromWhereClause(sql, flatParams) {
+  const filter = {};
+  if (!flatParams || flatParams[0] === undefined) return filter;
+  const whereBlock = sql.match(
+    /WHERE\s+([\s\S]+?)(?:\s+ORDER\s+BY|\s+GROUP\s+BY|\s+LIMIT\b|\s*$)/i
+  );
+  if (!whereBlock) return filter;
+  const clause = whereBlock[1].trim();
+  const eqMatch = clause.match(/(?:^|\s)(?:[\w]+\.)?(\w+)\s*=\s*\?/);
+  if (eqMatch) {
+    filter[eqMatch[1]] = flatParams[0];
+  }
+  return filter;
+}
+
 async function mongoAggregateApi(authToken, coll, pipeline) {
   const response = await fetchWithTimeout(API_BASE_URL, {
     method: 'POST',
@@ -457,13 +477,7 @@ class MongoDatabaseWrapper {
             }
           }
 
-          // Parse SELECT * FROM table WHERE col = ?
-          const whereMatch = sql.match(/WHERE\s+(\w+)\s*=\s*\?/i);
-          const filter = {};
-          
-          if (whereMatch && flatParams[0] !== undefined) {
-            filter[whereMatch[1]] = flatParams[0];
-          }
+          const filter = buildFilterFromWhereClause(sql, flatParams);
 
           const requestBody = {
             method: 'findOne',
@@ -515,17 +529,8 @@ class MongoDatabaseWrapper {
           const flatParams = params.length > 0 && Array.isArray(params[0]) ? params[0] : params;
           
           // Parse SELECT * FROM table [WHERE col = ?] [ORDER BY col]
-          const filter = {};
+          const filter = buildFilterFromWhereClause(sql, flatParams);
           const options = {};
-          
-          const whereMatch = sql.match(/WHERE\s+([^ORDER]+)/i);
-          if (whereMatch) {
-            const whereClause = whereMatch[1];
-            const eqMatch = whereClause.match(/(\w+)\s*=\s*\?/);
-            if (eqMatch && flatParams[0] !== undefined) {
-              filter[eqMatch[1]] = flatParams[0];
-            }
-          }
           
           const orderMatch = sql.match(/ORDER\s+BY\s+(\w+)\s+(ASC|DESC)?/i);
           if (orderMatch) {

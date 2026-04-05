@@ -16,6 +16,23 @@ function saleCashBank(invoice) {
   return { cash, bank, label };
 }
 
+/** Stable id for matching line items (SQLite / Mongo). */
+function invoiceRowId(invoice) {
+  if (!invoice) return '';
+  const v = invoice.id ?? invoice._id;
+  return v != null ? String(v) : '';
+}
+
+/** Keep only rows belonging to this sale (Mongo WHERE alias fix + type safety). */
+function filterItemsForInvoice(invoice, rows) {
+  const sid = invoiceRowId(invoice);
+  if (!sid || !Array.isArray(rows)) return [];
+  return rows.filter((row) => {
+    const r = row.sale_id ?? row.saleId;
+    return r != null && String(r) === sid;
+  });
+}
+
 // A4 Professional Invoice Component
 const InvoiceA4 = ({ invoice }) => (
   <div className="invoice-a4">
@@ -283,13 +300,15 @@ const Invoices = () => {
   };
 
   const loadInvoiceWithItems = async (invoice) => {
-    const items = await db.prepare(`
+    const saleKey = invoice?.id ?? invoice?._id;
+    const raw = await db.prepare(`
         SELECT si.*, p.name as product_name
         FROM sale_items si
         LEFT JOIN products p ON si.product_id = p.id
         WHERE si.sale_id = ?
-      `).all(invoice.id);
-    return { ...invoice, items: Array.isArray(items) ? items : [] };
+      `).all(saleKey);
+    const items = filterItemsForInvoice(invoice, raw);
+    return { ...invoice, items };
   };
 
   const viewInvoice = async (invoice) => {
@@ -305,10 +324,7 @@ const Invoices = () => {
   const printInvoice = async (invoice, format = 'a4') => {
     try {
       setPrintFormat(format);
-      const full =
-        Array.isArray(invoice.items) && invoice.items.length > 0
-          ? invoice
-          : await loadInvoiceWithItems(invoice);
+      const full = await loadInvoiceWithItems(invoice);
       setSelectedInvoice(full);
       await new Promise((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(resolve));
