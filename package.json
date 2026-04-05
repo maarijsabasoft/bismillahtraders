@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "BeverageHub - Complete Beverage Business Management",
   "engines": {
-    "node": ">=20"
+    "node": "20.x"
   },
   "main": "public/electron.js",
   "scripts": {
