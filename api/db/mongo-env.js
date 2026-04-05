@@ -53,3 +53,12 @@ export function getMongoDnsFamily() {
 export function isVercelRuntime() {
   return isVercelServerless();
 }
+
+/**
+ * Reusing a pooled client across frozen Vercel invocations often triggers TLS "alert 80".
+ * Default on Vercel: new client per request (slower, reliable). Set MONGODB_REUSE_CLIENT=1 to opt into cache.
+ */
+export function useRequestScopedMongoClient() {
+  if (!isVercelServerless()) return false;
+  return process.env.MONGODB_REUSE_CLIENT !== '1';
+}

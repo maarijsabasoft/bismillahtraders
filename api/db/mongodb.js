@@ -3,7 +3,12 @@
 
 import { MongoClient, ObjectId } from 'mongodb';
 import { verifyAuth } from './auth';
-import { getMongoUri, getResolvedMongoDbName, isVercelRuntime } from './mongo-env.js';
+import {
+  getMongoUri,
+  getResolvedMongoDbName,
+  isVercelRuntime,
+  useRequestScopedMongoClient,
+} from './mongo-env.js';
 import { buildAtlasMongoClientOptions } from './mongo-client-config.js';
 
 // MongoDB connection — single in-flight connect so parallel API calls (dashboard load) don't stack connects
@@ -143,8 +148,19 @@ export default async function handler(req, res) {
 
   try {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      let scopedClient = null;
       try {
-        const db = await getDatabase();
+        let db;
+        if (useRequestScopedMongoClient()) {
+          const uri = getMongoUri();
+          const dbName = getResolvedMongoDbName(uri);
+          scopedClient = new MongoClient(uri, buildAtlasMongoClientOptions());
+          await scopedClient.connect();
+          db = scopedClient.db(dbName);
+        } else {
+          db = await getDatabase();
+        }
+
         const { method, collection, operation, filter = {}, data = {}, options = {} } = req.body;
 
         if (!method || !collection) {
@@ -306,11 +322,21 @@ export default async function handler(req, res) {
             `MongoDB: transient error (attempt ${attempt + 1}/${maxAttempts}), resetting:`,
             error.message
           );
-          await resetMongoConnection();
+          if (!useRequestScopedMongoClient()) {
+            await resetMongoConnection();
+          }
           await new Promise((r) => setTimeout(r, 120 + attempt * 120));
           continue;
         }
         throw error;
+      } finally {
+        if (scopedClient) {
+          try {
+            await scopedClient.close();
+          } catch (closeErr) {
+            console.warn('MongoDB: scoped client close:', closeErr.message);
+          }
+        }
       }
     }
   } catch (error) {
