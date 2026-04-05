@@ -1,15 +1,10 @@
 // Vercel MongoDB Atlas API route - Fast, reliable, no timeouts
 // Uses MongoDB Atlas for serverless document database
 
-import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import { verifyAuth } from './auth';
-import {
-  getMongoUri,
-  getResolvedMongoDbName,
-  getMongoDriverTimeouts,
-  getMongoDnsFamily,
-  isVercelRuntime,
-} from './mongo-env.js';
+import { getMongoUri, getResolvedMongoDbName, isVercelRuntime } from './mongo-env.js';
+import { buildAtlasMongoClientOptions } from './mongo-client-config.js';
 
 // MongoDB connection — single in-flight connect so parallel API calls (dashboard load) don't stack connects
 let cachedClient = null;
@@ -58,25 +53,7 @@ async function getMongoClient() {
     connectPromise = (async () => {
       const uri = getMongoUri();
       const dbName = getResolvedMongoDbName(uri);
-      const { serverSelectionTimeoutMS, connectTimeoutMS, socketTimeoutMS } = getMongoDriverTimeouts();
-      const family = getMongoDnsFamily();
-      const onVercel = isVercelRuntime();
-      const client = new MongoClient(uri, {
-        maxPoolSize: 5,
-        minPoolSize: 0,
-        // Recycle idle sockets sooner on serverless — thawed lambdas often see dead TLS on old pool members
-        maxIdleTimeMS: onVercel ? 10000 : 20000,
-        serverSelectionTimeoutMS,
-        connectTimeoutMS,
-        socketTimeoutMS,
-        retryWrites: true,
-        serverApi: {
-          version: ServerApiVersion.v1,
-          strict: false,
-          deprecationErrors: false,
-        },
-        ...(family !== undefined ? { family } : {}),
-      });
+      const client = new MongoClient(uri, buildAtlasMongoClientOptions());
       await client.connect();
       cachedClient = client;
       cachedDb = client.db(dbName);
@@ -159,8 +136,13 @@ export default async function handler(req, res) {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
 
+  const maxAttempts = Math.min(
+    Math.max(1, Number(process.env.MONGODB_HANDLER_MAX_ATTEMPTS) || 2),
+    4
+  );
+
   try {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const db = await getDatabase();
         const { method, collection, operation, filter = {}, data = {}, options = {} } = req.body;
@@ -313,9 +295,14 @@ export default async function handler(req, res) {
 
         return res.status(200).json({ success: true, data: result });
       } catch (error) {
-        if (attempt === 0 && isMongoHandshakeRetryError(error)) {
-          console.warn('MongoDB: transient error, resetting connection and retrying once:', error.message);
+        const canRetry = attempt < maxAttempts - 1 && isMongoHandshakeRetryError(error);
+        if (canRetry) {
+          console.warn(
+            `MongoDB: transient error (attempt ${attempt + 1}/${maxAttempts}), resetting:`,
+            error.message
+          );
           await resetMongoConnection();
+          await new Promise((r) => setTimeout(r, 120 + attempt * 120));
           continue;
         }
         throw error;

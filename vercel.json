@@ -1,10 +1,12 @@
 {
   "functions": {
     "api/db/mongodb.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "runtime": "nodejs20.x"
     },
     "api/db/mongodb-setup.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "runtime": "nodejs20.x"
     }
   },
   "headers": [

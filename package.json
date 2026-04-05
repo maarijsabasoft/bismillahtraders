@@ -2,6 +2,9 @@
   "name": "bismillah-traders",
   "version": "1.0.0",
   "description": "BeverageHub - Complete Beverage Business Management",
+  "engines": {
+    "node": ">=20"
+  },
   "main": "public/electron.js",
   "scripts": {
     "start": "react-app-rewired start",
