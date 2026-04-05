@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDatabase } from '../../context/DatabaseContext';
+import { useListCache } from '../../context/ListCacheContext';
+import { LIST_CACHE_KEYS } from '../../context/listCacheKeys';
 import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
@@ -10,7 +12,8 @@ import './Staff.css';
 
 const Staff = () => {
   const { db, isReady, dataRevision } = useDatabase();
-  const [staff, setStaff] = useState([]);
+  const { readListCache, writeListCache } = useListCache();
+  const [staff, setStaff] = useState(() => readListCache(LIST_CACHE_KEYS.staff) ?? []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [formData, setFormData] = useState({
@@ -28,6 +31,10 @@ const Staff = () => {
       loadStaff();
     }
   }, [db, isReady, dataRevision]);
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.staff, staff);
+  }, [staff, writeListCache]);
 
   const loadStaff = async () => {
     try {

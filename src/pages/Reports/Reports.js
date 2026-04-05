@@ -1,18 +1,50 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDatabase } from '../../context/DatabaseContext';
+import { useListCache } from '../../context/ListCacheContext';
+import { LIST_CACHE_KEYS } from '../../context/listCacheKeys';
 import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
 import Table from '../../components/Table/Table';
 import './Reports.css';
 
+const DEFAULT_REPORT_SUMMARY = { totalSales: 0, totalProfit: 0, totalExpenses: 0 };
+
 const Reports = () => {
   const { db, isReady, dataRevision } = useDatabase();
-  const [reportType, setReportType] = useState('daily');
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
-  const [reportData, setReportData] = useState([]);
-  const [summary, setSummary] = useState({ totalSales: 0, totalProfit: 0, totalExpenses: 0 });
+  const { readListCache, writeListCache } = useListCache();
+
+  const [reportType, setReportType] = useState(
+    () => readListCache(LIST_CACHE_KEYS.reportsBundle)?.reportType ?? 'daily'
+  );
+  const [startDate, setStartDate] = useState(() => {
+    const b = readListCache(LIST_CACHE_KEYS.reportsBundle);
+    return b?.startDate ?? new Date().toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const b = readListCache(LIST_CACHE_KEYS.reportsBundle);
+    return b?.endDate ?? new Date().toISOString().split('T')[0];
+  });
+  const [reportData, setReportData] = useState(
+    () => readListCache(LIST_CACHE_KEYS.reportsBundle)?.reportData ?? []
+  );
+  const [summary, setSummary] = useState(() => {
+    const b = readListCache(LIST_CACHE_KEYS.reportsBundle);
+    return {
+      ...DEFAULT_REPORT_SUMMARY,
+      ...(b?.summary && typeof b.summary === 'object' ? b.summary : {}),
+    };
+  });
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.reportsBundle, {
+      reportType,
+      startDate,
+      endDate,
+      reportData,
+      summary,
+    });
+  }, [reportType, startDate, endDate, reportData, summary, writeListCache]);
 
   const generateReport = useCallback(async () => {
     try {

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDatabase } from '../../context/DatabaseContext';
+import { useListCache } from '../../context/ListCacheContext';
+import { LIST_CACHE_KEYS } from '../../context/listCacheKeys';
 import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
@@ -10,8 +12,13 @@ import './Inventory.css';
 
 const Inventory = () => {
   const { db, isReady, dataRevision } = useDatabase();
-  const [stockLevels, setStockLevels] = useState([]);
-  const [products, setProducts] = useState([]);
+  const { readListCache, writeListCache } = useListCache();
+  const [stockLevels, setStockLevels] = useState(
+    () => readListCache(LIST_CACHE_KEYS.inventoryStock) ?? []
+  );
+  const [products, setProducts] = useState(
+    () => readListCache(LIST_CACHE_KEYS.inventoryProducts) ?? []
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     product_id: '',
@@ -27,6 +34,14 @@ const Inventory = () => {
       loadStockLevels();
     }
   }, [db, isReady, dataRevision]);
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.inventoryStock, stockLevels);
+  }, [stockLevels, writeListCache]);
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.inventoryProducts, products);
+  }, [products, writeListCache]);
 
   const loadStockLevels = async () => {
     try {

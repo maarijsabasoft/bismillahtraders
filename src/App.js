@@ -16,11 +16,13 @@ import Staff from './pages/Staff/Staff';
 import Expenses from './pages/Expenses/Expenses';
 import { DatabaseProvider } from './context/DatabaseContext';
 import { AuthProvider } from './context/AuthContext';
+import { ListCacheProvider } from './context/ListCacheContext';
 
 function App() {
   return (
     <AuthProvider>
       <DatabaseProvider>
+        <ListCacheProvider>
         <Router>
           <Routes>
             <Route path="/" element={<Landing />} />
@@ -138,6 +140,7 @@ function App() {
             />
           </Routes>
         </Router>
+        </ListCacheProvider>
       </DatabaseProvider>
     </AuthProvider>
   );

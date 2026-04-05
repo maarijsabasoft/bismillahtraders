@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useDatabase } from '../../context/DatabaseContext';
+import { useListCache } from '../../context/ListCacheContext';
+import { LIST_CACHE_KEYS } from '../../context/listCacheKeys';
 import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
@@ -12,9 +14,14 @@ import './Products.css';
 
 const Products = () => {
   const { db, isReady, dbMode, dataRevision } = useDatabase();
+  const { readListCache, writeListCache } = useListCache();
   const location = useLocation();
-  const [products, setProducts] = useState([]);
-  const [companies, setCompanies] = useState([]);
+  const [products, setProducts] = useState(
+    () => readListCache(LIST_CACHE_KEYS.productsRows) ?? []
+  );
+  const [companies, setCompanies] = useState(
+    () => readListCache(LIST_CACHE_KEYS.productsCompanies) ?? []
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [formData, setFormData] = useState({
@@ -36,6 +43,14 @@ const Products = () => {
       loadProducts();
     }
   }, [db, isReady, dataRevision, location.pathname]);
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.productsRows, products);
+  }, [products, writeListCache]);
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.productsCompanies, companies);
+  }, [companies, writeListCache]);
 
   const normalizeCompanyIdForDb = (raw) => {
     if (dbMode === 'mongodb') {

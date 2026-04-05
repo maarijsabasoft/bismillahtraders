@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDatabase } from '../../context/DatabaseContext';
+import { useListCache } from '../../context/ListCacheContext';
+import { LIST_CACHE_KEYS } from '../../context/listCacheKeys';
 import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
@@ -10,7 +12,10 @@ import './Suppliers.css';
 
 const Suppliers = () => {
   const { db, isReady, dataRevision } = useDatabase();
-  const [suppliers, setSuppliers] = useState([]);
+  const { readListCache, writeListCache } = useListCache();
+  const [suppliers, setSuppliers] = useState(
+    () => readListCache(LIST_CACHE_KEYS.suppliers) ?? []
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [formData, setFormData] = useState({
@@ -25,6 +30,10 @@ const Suppliers = () => {
       loadSuppliers();
     }
   }, [db, isReady, dataRevision]);
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.suppliers, suppliers);
+  }, [suppliers, writeListCache]);
 
   const loadSuppliers = async () => {
     try {

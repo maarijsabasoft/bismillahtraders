@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDatabase } from '../../context/DatabaseContext';
+import { useListCache } from '../../context/ListCacheContext';
+import { LIST_CACHE_KEYS } from '../../context/listCacheKeys';
 import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
@@ -10,9 +12,14 @@ import './Sales.css';
 
 const Sales = () => {
   const { db, isReady, dataRevision } = useDatabase();
-  const [sales, setSales] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [customers, setCustomers] = useState([]);
+  const { readListCache, writeListCache } = useListCache();
+  const [sales, setSales] = useState(() => readListCache(LIST_CACHE_KEYS.salesRows) ?? []);
+  const [products, setProducts] = useState(
+    () => readListCache(LIST_CACHE_KEYS.salesProducts) ?? []
+  );
+  const [customers, setCustomers] = useState(
+    () => readListCache(LIST_CACHE_KEYS.salesCustomers) ?? []
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [cart, setCart] = useState([]);
   const [formData, setFormData] = useState({
@@ -28,6 +35,18 @@ const Sales = () => {
       loadCustomers();
     }
   }, [db, isReady, dataRevision]);
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.salesRows, sales);
+  }, [sales, writeListCache]);
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.salesProducts, products);
+  }, [products, writeListCache]);
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.salesCustomers, customers);
+  }, [customers, writeListCache]);
 
   const loadProducts = async () => {
     try {

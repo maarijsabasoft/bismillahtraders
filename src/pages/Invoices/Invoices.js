@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDatabase } from '../../context/DatabaseContext';
+import { useListCache } from '../../context/ListCacheContext';
+import { LIST_CACHE_KEYS } from '../../context/listCacheKeys';
 import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
 import Modal from '../../components/Modal/Modal';
@@ -211,7 +213,10 @@ const InvoiceSlip = ({ invoice }) => (
 
 const Invoices = () => {
   const { db, isReady, dataRevision } = useDatabase();
-  const [invoices, setInvoices] = useState([]);
+  const { readListCache, writeListCache } = useListCache();
+  const [invoices, setInvoices] = useState(
+    () => readListCache(LIST_CACHE_KEYS.invoices) ?? []
+  );
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [printFormat, setPrintFormat] = useState('a4'); // 'a4' or 'slip'
@@ -221,6 +226,10 @@ const Invoices = () => {
       loadInvoices();
     }
   }, [db, isReady, dataRevision]);
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.invoices, invoices);
+  }, [invoices, writeListCache]);
 
   const loadInvoices = async () => {
     try {

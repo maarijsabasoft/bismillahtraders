@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDatabase } from '../../context/DatabaseContext';
+import { useListCache } from '../../context/ListCacheContext';
+import { LIST_CACHE_KEYS } from '../../context/listCacheKeys';
 import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
@@ -10,7 +12,10 @@ import './Customers.css';
 
 const Customers = () => {
   const { db, isReady, dataRevision } = useDatabase();
-  const [customers, setCustomers] = useState([]);
+  const { readListCache, writeListCache } = useListCache();
+  const [customers, setCustomers] = useState(
+    () => readListCache(LIST_CACHE_KEYS.customers) ?? []
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [formData, setFormData] = useState({
@@ -26,6 +31,10 @@ const Customers = () => {
       loadCustomers();
     }
   }, [db, isReady, dataRevision]);
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.customers, customers);
+  }, [customers, writeListCache]);
 
   const loadCustomers = async () => {
     try {

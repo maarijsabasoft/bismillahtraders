@@ -1,18 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import { useDatabase } from '../../context/DatabaseContext';
+import { useListCache } from '../../context/ListCacheContext';
+import { LIST_CACHE_KEYS } from '../../context/listCacheKeys';
 import Card from '../../components/Card/Card';
 import './Dashboard.css';
 
+const DEFAULT_DASHBOARD_STATS = {
+  totalSales: 0,
+  totalCustomers: 0,
+  totalProducts: 0,
+  lowStock: 0,
+  todaySales: 0,
+  outstandingBalance: 0,
+};
+
 const Dashboard = () => {
   const { db, isReady, dataRevision } = useDatabase();
-  const [stats, setStats] = useState({
-    totalSales: 0,
-    totalCustomers: 0,
-    totalProducts: 0,
-    lowStock: 0,
-    todaySales: 0,
-    outstandingBalance: 0
+  const { readListCache, writeListCache } = useListCache();
+  const [stats, setStats] = useState(() => {
+    const c = readListCache(LIST_CACHE_KEYS.dashboardStats);
+    return c && typeof c === 'object'
+      ? { ...DEFAULT_DASHBOARD_STATS, ...c }
+      : { ...DEFAULT_DASHBOARD_STATS };
   });
+
+  useEffect(() => {
+    writeListCache(LIST_CACHE_KEYS.dashboardStats, stats);
+  }, [stats, writeListCache]);
 
   useEffect(() => {
     if (!isReady || !db) return;
