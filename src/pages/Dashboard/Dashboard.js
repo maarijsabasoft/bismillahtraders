@@ -77,7 +77,8 @@ const Dashboard = () => {
     };
 
     const loadLocalFallback = async () => {
-      const today = new Date().toISOString().split('T')[0];
+      const td = new Date();
+      const today = localDateKey(td);
       const [
         salesResult,
         todayResult,

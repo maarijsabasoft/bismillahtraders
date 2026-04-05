@@ -16,6 +16,46 @@
   gap: 8px;
 }
 
+.invoice-actions--wrap {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.invoice-preview-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.invoice-preview-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--lp-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.invoice-actions-icons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A4 fits inside invoice modal without forcing horizontal overflow */
+.invoice-modal-body .invoice-container.invoice-a4 {
+  min-width: 0;
+  width: 100%;
+  max-width: 210mm;
+}
+
+.invoice-modal-body .invoice-a4 {
+  max-width: 100%;
+  padding: clamp(14px, 3.5vw, 56px);
+  box-sizing: border-box;
+}
+
 /* Print Container - Hidden by default */
 .print-container {
   display: none;
@@ -496,6 +536,8 @@
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box;
+    z-index: 2147483646 !important;
+    overflow: visible !important;
   }
 
   .invoice-print {

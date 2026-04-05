@@ -2,7 +2,7 @@ import React from 'react';
 import { FiX } from 'react-icons/fi';
 import './Modal.css';
 
-const Modal = ({ isOpen, onClose, title, children, size = 'medium' }) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'medium', bodyClassName = '' }) => {
   if (!isOpen) return null;
 
   return (
@@ -17,7 +17,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'medium' }) => {
             <FiX />
           </button>
         </div>
-        <div className="modal-body">
+        <div className={`modal-body ${bodyClassName}`.trim()}>
           {children}
         </div>
       </div>

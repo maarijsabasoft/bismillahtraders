@@ -38,6 +38,18 @@
   max-width: 100%;
 }
 
+/* Invoice / A4 preview: wide enough for 210mm content + padding */
+.modal-invoice {
+  width: min(960px, calc(100vw - 32px));
+  max-width: 100%;
+}
+
+.modal-invoice .modal-body {
+  overflow-x: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .modal-header {
   padding: 18px 22px;
   border-bottom: 1px solid var(--lp-line-light);
@@ -118,6 +130,11 @@
     max-width: 95vw !important;
     margin: 0;
     box-sizing: border-box;
+  }
+
+  .modal-invoice {
+    width: 95% !important;
+    max-width: 95vw !important;
   }
 
   .modal-header {

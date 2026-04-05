@@ -1,4 +1,5 @@
 import initSqlJs from 'sql.js';
+import { emitDataMutation } from './dataSync';
 
 let db = null;
 let SQL = null;
@@ -496,6 +497,13 @@ class DatabaseWrapper {
           
           // Save database asynchronously (fire and forget)
           saveDatabase().catch(err => console.error('Error saving database:', err));
+          if (typeof window !== 'undefined') {
+            try {
+              emitDataMutation({ source: 'local-sql' });
+            } catch {
+              /* ignore */
+            }
+          }
           return Promise.resolve({ lastInsertRowid, changes: 1 });
         } catch (error) {
           console.error('Database run error:', error, sql, params);

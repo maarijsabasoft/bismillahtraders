@@ -280,6 +280,76 @@ async function tryMongoDashboardScalar(sql, flatParams, collection, authToken) {
   return undefined;
 }
 
+/** Reports: SUM(expenses) in a date range (Mongo has no SQL DATE/BETWEEN in generic get()). */
+async function tryMongoExpenseSumRange(sql, flatParams, authToken) {
+  const norm = sql.replace(/\s+/g, ' ').trim();
+  if (
+    !/^SELECT SUM\(amount\) AS total FROM expenses WHERE DATE\(expense_date\) BETWEEN \? AND \?$/i.test(
+      norm
+    )
+  ) {
+    return undefined;
+  }
+  const start = flatParams[0];
+  const end = flatParams[1];
+  if (start == null || end == null) {
+    return { total: 0 };
+  }
+  const rows = await mongoAggregateApi(authToken, 'expenses', [
+    {
+      $addFields: {
+        _dayKey: {
+          $substrBytes: [
+            {
+              $toString: {
+                $ifNull: ['$expense_date', { $ifNull: ['$expenseDate', ''] }],
+              },
+            },
+            0,
+            10,
+          ],
+        },
+      },
+    },
+    { $match: { _dayKey: { $gte: String(start), $lte: String(end) } } },
+    {
+      $group: {
+        _id: null,
+        total: {
+          $sum: {
+            $convert: {
+              input: { $ifNull: ['$amount', 0] },
+              to: 'double',
+              onError: 0,
+              onNull: 0,
+            },
+          },
+        },
+      },
+    },
+  ]);
+  return { total: Number(rows[0]?.total) || 0 };
+}
+
+function localCalendarDateParts(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return { y, m, day, iso: `${y}-${m}-${day}` };
+}
+
+/** Last N calendar days ending today (local), oldest first — matches Dashboard chart bucketing. */
+function buildLocalSalesTrendDays(count = 7) {
+  const keys = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - i);
+    keys.push(localCalendarDateParts(d).iso);
+  }
+  return keys;
+}
+
 // Database wrapper with better-sqlite3-like API for MongoDB
 class MongoDatabaseWrapper {
   prepare(sql) {
@@ -485,6 +555,13 @@ class MongoDatabaseWrapper {
             }
           }
 
+          if (sql.toLowerCase().includes('from expenses')) {
+            const expenseRow = await tryMongoExpenseSumRange(sql, flatParams, authToken);
+            if (expenseRow !== undefined) {
+              return expenseRow;
+            }
+          }
+
           const filter = buildFilterFromWhereClause(sql, flatParams);
 
           const requestBody = {
@@ -600,7 +677,9 @@ class MongoDatabaseWrapper {
     if (!authToken) {
       throw new Error('Not authenticated');
     }
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = localCalendarDateParts(now).iso;
+    const salesTrendDays = buildLocalSalesTrendDays(7);
     const response = await fetchWithTimeout(API_BASE_URL, {
       method: 'POST',
       headers: {
@@ -611,7 +690,7 @@ class MongoDatabaseWrapper {
         method: 'dashboardStats',
         collection: 'dashboard',
         filter: {},
-        data: { today },
+        data: { today, salesTrendDays },
       }),
     });
 

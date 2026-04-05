@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useDatabase } from '../../context/DatabaseContext';
 import { useListCache } from '../../context/ListCacheContext';
 import { LIST_CACHE_KEYS } from '../../context/listCacheKeys';
@@ -368,6 +369,7 @@ const Invoices = () => {
 
   const viewInvoice = async (invoice) => {
     try {
+      setPrintFormat('a4');
       const full = await loadInvoiceWithItems(invoice);
       setSelectedInvoice(full);
       setIsViewModalOpen(true);
@@ -384,7 +386,8 @@ const Invoices = () => {
       await new Promise((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(resolve));
       });
-      setTimeout(() => window.print(), 200);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      window.print();
     } catch (error) {
       console.error('Error preparing print:', error);
     }
@@ -516,42 +519,64 @@ const Invoices = () => {
             isOpen={isViewModalOpen}
             onClose={() => setIsViewModalOpen(false)}
             title={`Invoice ${selectedInvoice.invoice_number}`}
-            size="large"
+            size="invoice"
+            bodyClassName="invoice-modal-body"
           >
             <div className="invoice-view">
-              <div className="invoice-actions">
-                <Button
-                  variant="primary"
-                  size="small"
-                  className="btn-icon-only"
-                  title="Print A4 invoice"
-                  aria-label="Print A4 invoice"
-                  onClick={() => printInvoice(selectedInvoice, 'a4')}
-                >
-                  <FiFileText />
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  className="btn-icon-only"
-                  title="Print receipt slip (2.5 inch)"
-                  aria-label="Print receipt slip"
-                  onClick={() => printInvoice(selectedInvoice, 'slip')}
-                >
-                  <FiPrinter />
-                </Button>
-                <Button
-                  variant="danger"
-                  size="small"
-                  className="btn-icon-only"
-                  title="Delete invoice"
-                  aria-label="Delete invoice"
-                  onClick={() => handleDeleteInvoice(selectedInvoice)}
-                >
-                  <FiTrash2 />
-                </Button>
+              <div className="invoice-actions invoice-actions--wrap">
+                <div className="invoice-preview-toggles no-print" role="group" aria-label="Preview format">
+                  <span className="invoice-preview-label">Preview</span>
+                  <Button
+                    type="button"
+                    variant={printFormat === 'a4' ? 'primary' : 'secondary'}
+                    size="small"
+                    onClick={() => setPrintFormat('a4')}
+                  >
+                    A4
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={printFormat === 'slip' ? 'primary' : 'secondary'}
+                    size="small"
+                    onClick={() => setPrintFormat('slip')}
+                  >
+                    Slip
+                  </Button>
+                </div>
+                <div className="invoice-actions-icons no-print">
+                  <Button
+                    variant="primary"
+                    size="small"
+                    className="btn-icon-only"
+                    title="Print A4 invoice"
+                    aria-label="Print A4 invoice"
+                    onClick={() => printInvoice(selectedInvoice, 'a4')}
+                  >
+                    <FiFileText />
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    className="btn-icon-only"
+                    title="Print receipt slip (2.5 inch)"
+                    aria-label="Print receipt slip"
+                    onClick={() => printInvoice(selectedInvoice, 'slip')}
+                  >
+                    <FiPrinter />
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="small"
+                    className="btn-icon-only"
+                    title="Delete invoice"
+                    aria-label="Delete invoice"
+                    onClick={() => handleDeleteInvoice(selectedInvoice)}
+                  >
+                    <FiTrash2 />
+                  </Button>
+                </div>
               </div>
-              
+
               <div className={`invoice-container invoice-${printFormat}`}>
                 {printFormat === 'a4' ? (
                   <InvoiceA4 invoice={selectedInvoice} />
@@ -561,16 +586,19 @@ const Invoices = () => {
               </div>
             </div>
           </Modal>
-          
-          {/* Hidden print containers - always rendered for printing */}
-          <div className="print-container">
-            <div className={`invoice-print invoice-a4-print ${printFormat === 'a4' ? 'active' : ''}`}>
-              {selectedInvoice && <InvoiceA4 invoice={selectedInvoice} />}
-            </div>
-            <div className={`invoice-print invoice-slip-print ${printFormat === 'slip' ? 'active' : ''}`}>
-              {selectedInvoice && <InvoiceSlip invoice={selectedInvoice} />}
-            </div>
-          </div>
+
+          {typeof document !== 'undefined' &&
+            createPortal(
+              <div className="print-container" aria-hidden="true">
+                <div className={`invoice-print invoice-a4-print ${printFormat === 'a4' ? 'active' : ''}`}>
+                  <InvoiceA4 invoice={selectedInvoice} />
+                </div>
+                <div className={`invoice-print invoice-slip-print ${printFormat === 'slip' ? 'active' : ''}`}>
+                  <InvoiceSlip invoice={selectedInvoice} />
+                </div>
+              </div>,
+              document.body
+            )}
         </>
       )}
     </div>

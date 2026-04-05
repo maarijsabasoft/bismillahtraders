@@ -106,11 +106,13 @@ const Reports = () => {
       // Calculate summary
       const totalSales = salesWithProfit.reduce((sum, s) => sum + parseFloat(s.final_amount || 0), 0);
       const totalProfit = salesWithProfit.reduce((sum, s) => sum + (s.profit || 0), 0);
-      
+
+      const expenseEnd = reportType === 'daily' ? startDate : endDate;
+
       const expenses = await db.prepare(`
         SELECT SUM(amount) as total FROM expenses
         WHERE DATE(expense_date) BETWEEN ? AND ?
-      `).get(startDate, endDate);
+      `).get(startDate, expenseEnd);
       const totalExpenses = parseFloat(expenses?.total || 0);
 
       setSummary({ totalSales, totalProfit, totalExpenses });

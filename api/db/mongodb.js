@@ -85,11 +85,20 @@ async function runDashboardStats(db, data = {}) {
       ? data.today
       : new Date().toISOString().split('T')[0];
 
-  const dayKeys = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setUTCDate(d.getUTCDate() - i);
-    dayKeys.push(d.toISOString().slice(0, 10));
+  let dayKeys;
+  if (
+    Array.isArray(data.salesTrendDays) &&
+    data.salesTrendDays.length > 0 &&
+    data.salesTrendDays.every((d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d))
+  ) {
+    dayKeys = [...data.salesTrendDays];
+  } else {
+    dayKeys = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() - i);
+      dayKeys.push(d.toISOString().slice(0, 10));
+    }
   }
   const trendStart = dayKeys[0];
 
