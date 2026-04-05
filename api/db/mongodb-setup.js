@@ -3,7 +3,7 @@
 
 import { MongoClient } from 'mongodb';
 import { verifyAuth } from './auth';
-import { getMongoUri, getResolvedMongoDbName } from './mongo-env.js';
+import { getMongoUri, getResolvedMongoDbName, preferMongoIpv4DnsOrder } from './mongo-env.js';
 import { buildAtlasMongoClientOptions } from './mongo-client-config.js';
 
 async function getDatabase() {
@@ -26,6 +26,8 @@ export default async function handler(req, res) {
   if (!verifyAuth(req)) {
     return res.status(401).json({ error: 'Unauthorized. Admin credentials required.' });
   }
+
+  preferMongoIpv4DnsOrder();
 
   res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate');
   res.setHeader('Pragma', 'no-cache');

@@ -10,13 +10,22 @@ export function buildAtlasMongoClientOptions() {
   const { serverSelectionTimeoutMS, connectTimeoutMS, socketTimeoutMS } = getMongoDriverTimeouts();
   const family = getMongoDnsFamily();
   const onVercel = isVercelRuntime();
-  const disableServerApi = process.env.MONGODB_DISABLE_SERVER_API === '1';
+  // Stable API can change handshake behavior; off on Vercel unless MONGODB_USE_SERVER_API=1.
+  const useServerApi =
+    !onVercel
+      ? process.env.MONGODB_DISABLE_SERVER_API !== '1'
+      : process.env.MONGODB_USE_SERVER_API === '1' && process.env.MONGODB_DISABLE_SERVER_API !== '1';
 
   const pool = Number(process.env.MONGODB_MAX_POOL_SIZE);
   const maxPoolSize = Number.isFinite(pool) && pool > 0 ? Math.min(pool, 50) : 5;
 
+  let insecureTls = {};
+  if (process.env.MONGODB_TLS_ALLOW_INVALID === '1') {
+    console.error('WARNING: MONGODB_TLS_ALLOW_INVALID=1 — TLS cert verification disabled. Debugging only.');
+    insecureTls = { tlsAllowInvalidCertificates: true };
+  }
+
   return {
-    // Small pool + ping-before-use avoids stale TLS; override with MONGODB_MAX_POOL_SIZE if needed.
     maxPoolSize,
     minPoolSize: 0,
     maxIdleTimeMS: onVercel ? 8000 : 20000,
@@ -24,9 +33,8 @@ export function buildAtlasMongoClientOptions() {
     connectTimeoutMS,
     socketTimeoutMS,
     retryWrites: true,
-    // Some TLS middleboxes / serverless paths break with wire compression + TLS.
     compressors: [],
-    ...(!disableServerApi
+    ...(useServerApi
       ? {
           serverApi: {
             version: ServerApiVersion.v1,
@@ -36,5 +44,6 @@ export function buildAtlasMongoClientOptions() {
         }
       : {}),
     ...(family !== undefined ? { family } : {}),
+    ...insecureTls,
   };
 }

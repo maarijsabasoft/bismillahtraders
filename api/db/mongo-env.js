@@ -3,12 +3,27 @@
  * MONGODB_URI must never be prefixed with REACT_APP_ — it must stay on the server.
  */
 
+import dns from 'node:dns';
+
+/** Ensure Atlas-friendly defaults without duplicating keys. */
+function normalizeMongoConnectionString(uri) {
+  const u = String(uri).trim();
+  const q = u.indexOf('?');
+  const base = q === -1 ? u : u.slice(0, q);
+  const existing = q === -1 ? '' : u.slice(q + 1);
+  const params = new URLSearchParams(existing);
+  if (!params.has('retryWrites')) params.set('retryWrites', 'true');
+  if (!params.has('w')) params.set('w', 'majority');
+  const tail = params.toString();
+  return tail ? `${base}?${tail}` : base;
+}
+
 export function getMongoUri() {
   const raw = process.env.MONGODB_URI;
   if (raw === undefined || raw === null || String(raw).trim() === '') {
     throw new Error('MONGODB_URI environment variable is not set');
   }
-  return String(raw).trim();
+  return normalizeMongoConnectionString(raw);
 }
 
 export function getMongoDbNameFromEnv() {
@@ -23,7 +38,7 @@ export function getResolvedMongoDbName(uri) {
 }
 
 function isVercelServerless() {
-  return process.env.VERCEL === '1';
+  return process.env.VERCEL === '1' || process.env.VERCEL === 'true' || !!process.env.VERCEL_URL;
 }
 
 /**
@@ -39,13 +54,16 @@ export function getMongoDriverTimeouts() {
 }
 
 /**
- * Omit (default) for normal OS DNS / dual-stack. Set MONGODB_DNS_FAMILY=4 or 6 only if Atlas/network docs require it.
- * Forcing IPv4 has been linked to intermittent TLS "alert 80" on some Vercel ↔ Atlas routes.
+ * On Vercel, default driver `family: 4` (unset env). Set MONGODB_DNS_FAMILY=0 to omit; 6 to force IPv6.
  */
 export function getMongoDnsFamily() {
   const v = process.env.MONGODB_DNS_FAMILY;
-  if (v === undefined || v === null || String(v).trim() === '') return undefined;
+  if (v === undefined || v === null || String(v).trim() === '') {
+    if (isVercelServerless()) return 4;
+    return undefined;
+  }
   const n = Number(String(v).trim());
+  if (n === 0) return undefined;
   if (n === 4 || n === 6) return n;
   return undefined;
 }
@@ -61,4 +79,17 @@ export function isVercelRuntime() {
 export function useRequestScopedMongoClient() {
   if (!isVercelServerless()) return false;
   return process.env.MONGODB_REUSE_CLIENT !== '1';
+}
+
+/** Prefer IPv4 when resolving mongodb+srv (Node 17+). Complements `family: 4` on Vercel. */
+export function preferMongoIpv4DnsOrder() {
+  if (!isVercelServerless()) return;
+  if (process.env.MONGODB_DNS_V4FIRST === '0') return;
+  try {
+    if (typeof dns.setDefaultResultOrder === 'function') {
+      dns.setDefaultResultOrder('ipv4first');
+    }
+  } catch (_) {
+    /* ignore */
+  }
 }
