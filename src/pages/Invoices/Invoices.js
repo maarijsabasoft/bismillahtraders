@@ -9,6 +9,13 @@ import Table from '../../components/Table/Table';
 import { FiPrinter, FiEye, FiFileText } from 'react-icons/fi';
 import './Invoices.css';
 
+function saleCashBank(invoice) {
+  const cash = Number(invoice?.cash_amount ?? invoice?.cashAmount ?? 0) || 0;
+  const bank = Number(invoice?.bank_amount ?? invoice?.bankAmount ?? 0) || 0;
+  const label = invoice?.bank_account_label || invoice?.bankAccountLabel || '';
+  return { cash, bank, label };
+}
+
 // A4 Professional Invoice Component
 const InvoiceA4 = ({ invoice }) => (
   <div className="invoice-a4">
@@ -98,9 +105,29 @@ const InvoiceA4 = ({ invoice }) => (
     <div className="invoice-footer">
       <div className="payment-info">
         <p><strong>Payment Method:</strong> {invoice.payment_method}</p>
+        {(() => {
+          const { cash, bank, label } = saleCashBank(invoice);
+          if (cash > 0 || bank > 0) {
+            return (
+              <>
+                {cash > 0 && (
+                  <p>
+                    <strong>Cash paid:</strong> Rs. {cash.toFixed(2)}
+                  </p>
+                )}
+                {bank > 0 && (
+                  <p>
+                    <strong>Bank{label ? ` (${label})` : ''}:</strong> Rs. {bank.toFixed(2)}
+                  </p>
+                )}
+              </>
+            );
+          }
+          return null;
+        })()}
         <p><strong>Payment Status:</strong> 
           <span className={invoice.payment_status === 'paid' ? 'status-paid' : 'status-pending'}>
-            {invoice.payment_status.toUpperCase()}
+            {String(invoice.payment_status || '').toUpperCase()}
           </span>
         </p>
       </div>
@@ -201,7 +228,16 @@ const InvoiceSlip = ({ invoice }) => (
     <div className="slip-footer">
       <div className="slip-payment">
         <p>Payment: {invoice.payment_method}</p>
-        <p>Status: <strong>{invoice.payment_status.toUpperCase()}</strong></p>
+        {(() => {
+          const { cash, bank, label } = saleCashBank(invoice);
+          return (
+            <>
+              {cash > 0 && <p>Cash: Rs.{cash.toFixed(2)}</p>}
+              {bank > 0 && <p>Bank{label ? ` (${label})` : ''}: Rs.{bank.toFixed(2)}</p>}
+            </>
+          );
+        })()}
+        <p>Status: <strong>{String(invoice.payment_status || '').toUpperCase()}</strong></p>
       </div>
       <div className="slip-thanks">
         <p>Thank You!</p>
@@ -246,16 +282,20 @@ const Invoices = () => {
     }
   };
 
-  const viewInvoice = async (invoice) => {
-    try {
-      const items = await db.prepare(`
+  const loadInvoiceWithItems = async (invoice) => {
+    const items = await db.prepare(`
         SELECT si.*, p.name as product_name
         FROM sale_items si
         LEFT JOIN products p ON si.product_id = p.id
         WHERE si.sale_id = ?
       `).all(invoice.id);
+    return { ...invoice, items: Array.isArray(items) ? items : [] };
+  };
 
-      setSelectedInvoice({ ...invoice, items: Array.isArray(items) ? items : [] });
+  const viewInvoice = async (invoice) => {
+    try {
+      const full = await loadInvoiceWithItems(invoice);
+      setSelectedInvoice(full);
       setIsViewModalOpen(true);
     } catch (error) {
       console.error('Error loading invoice details:', error);
@@ -263,17 +303,20 @@ const Invoices = () => {
   };
 
   const printInvoice = async (invoice, format = 'a4') => {
-    // Load invoice items if not already loaded
-    if (!invoice.items) {
-      await viewInvoice(invoice);
-    } else {
-      setSelectedInvoice(invoice);
+    try {
+      setPrintFormat(format);
+      const full =
+        Array.isArray(invoice.items) && invoice.items.length > 0
+          ? invoice
+          : await loadInvoiceWithItems(invoice);
+      setSelectedInvoice(full);
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+      setTimeout(() => window.print(), 200);
+    } catch (error) {
+      console.error('Error preparing print:', error);
     }
-    setPrintFormat(format);
-    // Wait a bit for state to update and DOM to render
-    setTimeout(() => {
-      window.print();
-    }, 300);
   };
 
   const columns = [

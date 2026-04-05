@@ -44,6 +44,40 @@ async function getDatabase() {
   return cachedDb;
 }
 
+/** Sum sale total — supports final_amount (snake) or finalAmount (camel). */
+function sumFinalAmount() {
+  return {
+    $sum: {
+      $convert: {
+        input: {
+          $ifNull: ['$final_amount', { $ifNull: ['$finalAmount', 0] }],
+        },
+        to: 'double',
+        onError: 0,
+        onNull: 0,
+      },
+    },
+  };
+}
+
+function sumOutstandingBalance() {
+  return {
+    $sum: {
+      $convert: {
+        input: {
+          $ifNull: [
+            '$outstanding_balance',
+            { $ifNull: ['$outstandingBalance', 0] },
+          ],
+        },
+        to: 'double',
+        onError: 0,
+        onNull: 0,
+      },
+    },
+  };
+}
+
 /** One HTTP round-trip for dashboard — avoids N sequential serverless invocations. */
 async function runDashboardStats(db, data = {}) {
   const today =
@@ -51,16 +85,21 @@ async function runDashboardStats(db, data = {}) {
       ? data.today
       : new Date().toISOString().split('T')[0];
 
-  const sumField = (field) => ({
-    $sum: {
-      $convert: {
-        input: `$${field}`,
-        to: 'double',
-        onError: 0,
-        onNull: 0,
+  const dayKeys = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - i);
+    dayKeys.push(d.toISOString().slice(0, 10));
+  }
+  const trendStart = dayKeys[0];
+
+  const addDayKey = {
+    $addFields: {
+      _dayKey: {
+        $substrBytes: [{ $toString: { $ifNull: ['$sale_date', ''] } }, 0, 10],
       },
     },
-  });
+  };
 
   const sales = db.collection('sales');
   const customers = db.collection('customers');
@@ -74,30 +113,44 @@ async function runDashboardStats(db, data = {}) {
     totalProducts,
     lowStock,
     balanceRows,
+    trendAgg,
   ] = await Promise.all([
-    sales.aggregate([{ $group: { _id: null, total: sumField('final_amount') } }]).toArray(),
+    sales.aggregate([{ $group: { _id: null, total: sumFinalAmount() } }]).toArray(),
     sales
       .aggregate([
-        {
-          $addFields: {
-            _saleDay: {
-              $substrBytes: [{ $toString: { $ifNull: ['$sale_date', ''] } }, 0, 10],
-            },
-          },
-        },
-        { $match: { _saleDay: today } },
-        { $group: { _id: null, total: sumField('final_amount') } },
+        addDayKey,
+        { $match: { _dayKey: today } },
+        { $group: { _id: null, total: sumFinalAmount() } },
       ])
       .toArray(),
     customers.countDocuments({}),
     products.countDocuments({ is_active: { $in: [1, true] } }),
     stockLevels.countDocuments({
-      $expr: { $lte: ['$quantity', '$low_stock_threshold'] },
+      $expr: {
+        $lte: [
+          { $toDouble: { $ifNull: ['$quantity', 0] } },
+          { $toDouble: { $ifNull: ['$low_stock_threshold', 10] } },
+        ],
+      },
     }),
-    customers
-      .aggregate([{ $group: { _id: null, total: sumField('outstanding_balance') } }])
+    customers.aggregate([{ $group: { _id: null, total: sumOutstandingBalance() } }]).toArray(),
+    sales
+      .aggregate([
+        addDayKey,
+        { $match: { _dayKey: { $gte: trendStart } } },
+        { $group: { _id: '$_dayKey', total: sumFinalAmount() } },
+        { $sort: { _id: 1 } },
+      ])
       .toArray(),
   ]);
+
+  const trendMap = Object.fromEntries(
+    trendAgg.map((r) => [r._id, Number(r.total) || 0])
+  );
+  const salesByDay = dayKeys.map((day) => ({
+    day,
+    total: trendMap[day] || 0,
+  }));
 
   return {
     totalSales: Number(totalSalesRows[0]?.total) || 0,
@@ -106,6 +159,7 @@ async function runDashboardStats(db, data = {}) {
     totalProducts,
     lowStock,
     outstandingBalance: Number(balanceRows[0]?.total) || 0,
+    salesByDay,
   };
 }
 

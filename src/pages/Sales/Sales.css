@@ -211,3 +211,39 @@
   }
 }
 
+.status-partial {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.sales-customer-balance {
+  font-size: 13px;
+  color: var(--lp-muted);
+  margin-top: 6px;
+}
+
+.sales-payment-split {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.sales-payment-hint {
+  font-size: 12px;
+  color: var(--lp-muted);
+  margin: 0;
+}
+
+.sales-payment-summary {
+  font-size: 13px;
+  color: var(--lp-ink);
+  margin-top: 4px;
+}
+
+.sales-due {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 8px;
+  color: var(--lp-ink);
+}
+

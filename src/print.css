@@ -1,0 +1,6 @@
+/* Global print: hide chrome (Invoices page adds its own print rules). */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

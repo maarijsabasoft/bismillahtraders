@@ -8,7 +8,7 @@
   "main": "public/electron.js",
   "scripts": {
     "start": "react-app-rewired start",
-    "dev:vercel": "vercel dev",
+    "dev:vercel": "npx --yes vercel dev",
     "build": "react-app-rewired build",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject",

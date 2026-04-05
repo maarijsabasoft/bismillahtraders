@@ -8,10 +8,12 @@ import Input from '../../components/Input/Input';
 import Modal from '../../components/Modal/Modal';
 import Table from '../../components/Table/Table';
 import { FiPlus } from 'react-icons/fi';
+import { useToast } from '../../context/ToastContext';
 import './Inventory.css';
 
 const Inventory = () => {
   const { db, isReady, dataRevision } = useDatabase();
+  const { toastError, toastSuccess } = useToast();
   const { readListCache, writeListCache } = useListCache();
   const [stockLevels, setStockLevels] = useState(
     () => readListCache(LIST_CACHE_KEYS.inventoryStock) ?? []
@@ -187,14 +189,14 @@ const Inventory = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.product_id || !formData.quantity) {
-      alert('Please select a product and enter quantity');
+      toastError('Please select a product and enter quantity');
       return;
     }
 
     try {
       const quantity = parseInt(formData.quantity);
       if (quantity <= 0) {
-        alert('Quantity must be greater than 0');
+        toastError('Quantity must be greater than 0');
         return;
       }
 
@@ -217,7 +219,7 @@ const Inventory = () => {
 
       const newQuantity = currentQuantity + transactionQuantity;
       if (newQuantity < 0) {
-        alert(`Insufficient stock! Current stock: ${currentQuantity}, cannot reduce by ${quantity}`);
+        toastError(`Insufficient stock. Current: ${currentQuantity}, cannot reduce by ${quantity}.`);
         return;
       }
 
@@ -250,15 +252,16 @@ const Inventory = () => {
         }
       }
 
+      const stockPid =
+        existingStock?.product_id != null ? existingStock.product_id : productId;
+
       if (existingStock) {
-        // Update existing stock level immediately
         await db.prepare(`
           UPDATE stock_levels 
           SET quantity = ?, updated_at = CURRENT_TIMESTAMP
           WHERE product_id = ?
-        `).run(newQuantity, productId);
+        `).run(newQuantity, stockPid);
       } else {
-        // Create new stock level entry - starts at 0, then adds/subtracts transaction
         await db.prepare(`
           INSERT INTO stock_levels (product_id, quantity, low_stock_threshold, updated_at)
           VALUES (?, ?, 10, CURRENT_TIMESTAMP)
@@ -271,11 +274,12 @@ const Inventory = () => {
       // Close modal after successful save
       handleCloseModal();
       
-      // Show success message with new stock level
-      alert(`Stock ${formData.transaction_type === 'IN' ? 'IN' : 'OUT'} transaction saved!\nNew stock level: ${newQuantity}`);
+      toastSuccess(
+        `Stock ${formData.transaction_type === 'IN' ? 'IN' : 'OUT'} saved. New level: ${newQuantity}.`
+      );
     } catch (error) {
       console.error('Error saving inventory:', error);
-      alert(`Error saving inventory transaction: ${error.message || 'Unknown error'}`);
+      toastError(`Error saving inventory: ${error.message || 'Unknown error'}`);
     }
   };
 

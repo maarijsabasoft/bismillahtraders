@@ -11,10 +11,12 @@ import Table from '../../components/Table/Table';
 import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
 import { formatDate } from '../../utils/dateUtils';
 import { mongoCrudErrorMessage } from '../../utils/mongoErrors';
+import { useToast } from '../../context/ToastContext';
 import './Companies.css';
 
 const Companies = () => {
   const { db, isReady, dbMode, dataRevision } = useDatabase();
+  const { toastError } = useToast();
   const { readListCache, writeListCache } = useListCache();
   const location = useLocation();
   const mountedRef = useRef(true);
@@ -90,7 +92,7 @@ const Companies = () => {
         setEditingCompany(ed);
         setFormData({ name, description: description || '' });
         setIsModalOpen(true);
-        alert(
+        toastError(
           `Could not save company.\n\n${mongoCrudErrorMessage(error, dbMode, {
             duplicateHint: 'A company with this name already exists. Use a different name.',
           })}`
@@ -132,7 +134,7 @@ const Companies = () => {
       const msg = mongoCrudErrorMessage(error, dbMode, {
         duplicateHint: 'A company with this name already exists. Use a different name.',
       });
-      setTimeout(() => alert(`Could not save company.\n\n${msg}`), 0);
+      setTimeout(() => toastError(`Could not save company.\n\n${msg}`), 0);
     }
   };
 
@@ -153,7 +155,7 @@ const Companies = () => {
       } catch (error) {
         console.error('Error deleting company:', error);
         setCompanies(snapshot);
-        alert(`Could not delete company.\n\n${mongoCrudErrorMessage(error, dbMode)}`);
+        toastError(`Could not delete company.\n\n${mongoCrudErrorMessage(error, dbMode)}`);
       }
     }
   };

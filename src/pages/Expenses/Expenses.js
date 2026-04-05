@@ -8,10 +8,12 @@ import Input from '../../components/Input/Input';
 import Modal from '../../components/Modal/Modal';
 import Table from '../../components/Table/Table';
 import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
+import { useToast } from '../../context/ToastContext';
 import './Expenses.css';
 
 const Expenses = () => {
   const { db, isReady, dataRevision } = useDatabase();
+  const { toastError } = useToast();
   const { readListCache, writeListCache } = useListCache();
   const [expenses, setExpenses] = useState(
     () => readListCache(LIST_CACHE_KEYS.expenses) ?? []
@@ -52,7 +54,7 @@ const Expenses = () => {
     try {
       const amount = parseFloat(formData.amount);
       if (amount <= 0) {
-        alert('Amount must be greater than 0');
+        toastError('Amount must be greater than 0');
         return;
       }
 
@@ -83,7 +85,7 @@ const Expenses = () => {
       handleCloseModal();
     } catch (error) {
       console.error('Error saving expense:', error);
-      alert('Error saving expense.');
+      toastError('Error saving expense.');
     }
   };
 
@@ -105,7 +107,7 @@ const Expenses = () => {
         await loadExpenses();
       } catch (error) {
         console.error('Error deleting expense:', error);
-        alert('Cannot delete expense.');
+        toastError('Cannot delete expense.');
       }
     }
   };

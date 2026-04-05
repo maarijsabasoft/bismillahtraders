@@ -8,10 +8,12 @@ import Input from '../../components/Input/Input';
 import Modal from '../../components/Modal/Modal';
 import Table from '../../components/Table/Table';
 import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
+import { useToast } from '../../context/ToastContext';
 import './Suppliers.css';
 
 const Suppliers = () => {
   const { db, isReady, dataRevision } = useDatabase();
+  const { toastError } = useToast();
   const { readListCache, writeListCache } = useListCache();
   const [suppliers, setSuppliers] = useState(
     () => readListCache(LIST_CACHE_KEYS.suppliers) ?? []
@@ -73,7 +75,7 @@ const Suppliers = () => {
       handleCloseModal();
     } catch (error) {
       console.error('Error saving supplier:', error);
-      alert('Error saving supplier.');
+      toastError('Error saving supplier.');
     }
   };
 
@@ -95,7 +97,7 @@ const Suppliers = () => {
         await loadSuppliers();
       } catch (error) {
         console.error('Error deleting supplier:', error);
-        alert('Cannot delete supplier.');
+        toastError('Cannot delete supplier.');
       }
     }
   };

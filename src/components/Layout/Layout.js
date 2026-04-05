@@ -17,7 +17,9 @@ const Layout = ({ children }) => {
   return (
     <div className="layout">
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-      {sidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar} />}
+      {sidebarOpen && (
+        <div className="sidebar-overlay no-print" onClick={closeSidebar} />
+      )}
       <div className="layout-main">
         <Header onMenuClick={toggleSidebar} />
         <main className="layout-content">

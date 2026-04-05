@@ -17,10 +17,12 @@ import Expenses from './pages/Expenses/Expenses';
 import { DatabaseProvider } from './context/DatabaseContext';
 import { AuthProvider } from './context/AuthContext';
 import { ListCacheProvider } from './context/ListCacheContext';
+import { ToastProvider } from './context/ToastContext';
 
 function App() {
   return (
     <AuthProvider>
+      <ToastProvider>
       <DatabaseProvider>
         <ListCacheProvider>
         <Router>
@@ -142,6 +144,7 @@ function App() {
         </Router>
         </ListCacheProvider>
       </DatabaseProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }

@@ -4,6 +4,17 @@
   overflow-x: hidden;
 }
 
+.customers-balance-readonly {
+  margin: 0 0 16px 0;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--lp-muted);
+  background: var(--lp-cream);
+  border-radius: 8px;
+  border: 1px solid var(--lp-line-light);
+}
+
 @media (max-width: 768px) {
   .customers-page {
     max-width: 100%;

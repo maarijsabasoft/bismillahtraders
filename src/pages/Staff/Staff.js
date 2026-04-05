@@ -8,10 +8,12 @@ import Input from '../../components/Input/Input';
 import Modal from '../../components/Modal/Modal';
 import Table from '../../components/Table/Table';
 import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
+import { useToast } from '../../context/ToastContext';
 import './Staff.css';
 
 const Staff = () => {
   const { db, isReady, dataRevision } = useDatabase();
+  const { toastError } = useToast();
   const { readListCache, writeListCache } = useListCache();
   const [staff, setStaff] = useState(() => readListCache(LIST_CACHE_KEYS.staff) ?? []);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -80,7 +82,7 @@ const Staff = () => {
       handleCloseModal();
     } catch (error) {
       console.error('Error saving staff:', error);
-      alert('Error saving staff member.');
+      toastError('Error saving staff member.');
     }
   };
 
@@ -105,7 +107,7 @@ const Staff = () => {
         await loadStaff();
       } catch (error) {
         console.error('Error deleting staff:', error);
-        alert('Cannot delete staff member.');
+        toastError('Cannot delete staff member.');
       }
     }
   };

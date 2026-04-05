@@ -125,6 +125,7 @@ export const initDatabase = async () => {
       console.log('New database created');
     }
 
+    migrateSalesColumns();
     return true;
   } catch (error) {
     console.error('Error initializing database:', error);
@@ -133,10 +134,27 @@ export const initDatabase = async () => {
       SQL = await initSqlJs();
       db = new SQL.Database();
       createTables();
+      migrateSalesColumns();
       return true;
     } catch (fallbackError) {
       console.error('Fallback database initialization failed:', fallbackError);
       return false;
+    }
+  }
+};
+
+const migrateSalesColumns = () => {
+  if (!db) return;
+  const alters = [
+    'ALTER TABLE sales ADD COLUMN cash_amount REAL DEFAULT 0',
+    'ALTER TABLE sales ADD COLUMN bank_amount REAL DEFAULT 0',
+    'ALTER TABLE sales ADD COLUMN bank_account_label TEXT',
+  ];
+  for (const sql of alters) {
+    try {
+      db.run(sql);
+    } catch {
+      /* duplicate column — already migrated or in CREATE */
     }
   }
 };
@@ -246,6 +264,9 @@ const createTables = () => {
       payment_method TEXT,
       payment_status TEXT DEFAULT 'pending',
       notes TEXT,
+      cash_amount REAL DEFAULT 0,
+      bank_amount REAL DEFAULT 0,
+      bank_account_label TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
     )

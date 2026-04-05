@@ -15,7 +15,7 @@ const Header = ({ onMenuClick }) => {
   };
 
   return (
-    <header className="header">
+    <header className="header no-print">
       <div className="header-content">
         <div className="header-left">
           <button className="hamburger-btn" onClick={onMenuClick} aria-label="Toggle menu">

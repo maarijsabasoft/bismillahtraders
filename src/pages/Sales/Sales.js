@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDatabase } from '../../context/DatabaseContext';
 import { useListCache } from '../../context/ListCacheContext';
 import { LIST_CACHE_KEYS } from '../../context/listCacheKeys';
+import { useToast } from '../../context/ToastContext';
 import Card from '../../components/Card/Card';
 import Button from '../../components/Button/Button';
 import Input from '../../components/Input/Input';
@@ -10,9 +11,26 @@ import Table from '../../components/Table/Table';
 import { FiPlus, FiX } from 'react-icons/fi';
 import './Sales.css';
 
+async function getCurrentProductStock(db, productId) {
+  const pid = String(productId);
+  let row = await db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ?').get(pid);
+  if (row == null && /^\d+$/.test(pid)) {
+    row = await db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ?').get(
+      parseInt(pid, 10)
+    );
+  }
+  if (row != null && row.quantity != null) {
+    return parseInt(row.quantity, 10) || 0;
+  }
+  const txs = await db.prepare('SELECT quantity FROM inventory WHERE product_id = ?').all(pid);
+  const arr = Array.isArray(txs) ? txs : [];
+  return arr.reduce((s, t) => s + (parseInt(t.quantity, 10) || 0), 0);
+}
+
 const Sales = () => {
   const { db, isReady, dataRevision } = useDatabase();
   const { readListCache, writeListCache } = useListCache();
+  const { toastError, toastSuccess } = useToast();
   const [sales, setSales] = useState(() => readListCache(LIST_CACHE_KEYS.salesRows) ?? []);
   const [products, setProducts] = useState(
     () => readListCache(LIST_CACHE_KEYS.salesProducts) ?? []
@@ -24,8 +42,10 @@ const Sales = () => {
   const [cart, setCart] = useState([]);
   const [formData, setFormData] = useState({
     customer_id: '',
-    payment_method: 'Cash',
-    notes: ''
+    cash_paid: '',
+    bank_paid: '',
+    bank_account_label: '',
+    notes: '',
   });
 
   useEffect(() => {
@@ -84,36 +104,44 @@ const Sales = () => {
     }
   };
 
+  const selectedCustomer = useMemo(() => {
+    if (!formData.customer_id) return null;
+    return customers.find((c) => String(c.id) === String(formData.customer_id)) || null;
+  }, [formData.customer_id, customers]);
+
   const addToCart = (product) => {
-    const existingItem = cart.find(item => item.product_id === product.id);
+    const existingItem = cart.find((item) => item.product_id === product.id);
     if (existingItem) {
-      setCart(cart.map(item =>
-        item.product_id === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
+      setCart(
+        cart.map((item) =>
+          item.product_id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        )
+      );
     } else {
-      setCart([...cart, {
-        product_id: product.id,
-        product_name: product.name,
-        quantity: 1,
-        unit_price: product.sale_price,
-        discount: 0,
-        tax: product.tax_rate || 0
-      }]);
+      setCart([
+        ...cart,
+        {
+          product_id: product.id,
+          product_name: product.name,
+          quantity: 1,
+          unit_price: product.sale_price,
+          discount: 0,
+          tax: product.tax_rate || 0,
+        },
+      ]);
     }
   };
 
   const removeFromCart = (productId) => {
-    setCart(cart.filter(item => item.product_id !== productId));
+    setCart(cart.filter((item) => item.product_id !== productId));
   };
 
   const updateCartItem = (productId, field, value) => {
-    setCart(cart.map(item =>
-      item.product_id === productId
-        ? { ...item, [field]: parseFloat(value) || 0 }
-        : item
-    ));
+    setCart(
+      cart.map((item) =>
+        item.product_id === productId ? { ...item, [field]: parseFloat(value) || 0 } : item
+      )
+    );
   };
 
   const calculateTotals = () => {
@@ -121,12 +149,12 @@ const Sales = () => {
     let totalDiscount = 0;
     let totalTax = 0;
 
-    cart.forEach(item => {
+    cart.forEach((item) => {
       const itemSubtotal = item.quantity * item.unit_price;
       const itemDiscount = (itemSubtotal * item.discount) / 100;
       const itemAfterDiscount = itemSubtotal - itemDiscount;
       const itemTax = (itemAfterDiscount * item.tax) / 100;
-      
+
       subtotal += itemSubtotal;
       totalDiscount += itemDiscount;
       totalTax += itemTax;
@@ -140,100 +168,151 @@ const Sales = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (cart.length === 0) {
-      alert('Please add at least one product to the cart');
+      toastError('Please add at least one product to the cart.');
       return;
     }
 
     try {
       const { subtotal, totalDiscount, totalTax, finalAmount } = calculateTotals();
-      
-      // Generate invoice number
+      const cashAmt = Math.max(0, parseFloat(formData.cash_paid) || 0);
+      const bankAmt = Math.max(0, parseFloat(formData.bank_paid) || 0);
+      const paid = Math.round((cashAmt + bankAmt) * 100) / 100;
+      const creditPortion = Math.max(0, Math.round((finalAmount - paid) * 100) / 100);
+
+      if (paid > finalAmount + 0.01) {
+        toastError('Cash + bank payments cannot exceed the invoice total.');
+        return;
+      }
+
+      for (const item of cart) {
+        const avail = await getCurrentProductStock(db, item.product_id);
+        if (avail < item.quantity) {
+          toastError(
+            `Not enough stock for "${item.product_name}". Available: ${avail}, needed: ${item.quantity}.`
+          );
+          return;
+        }
+      }
+
+      let payment_status = 'paid';
+      if (creditPortion > 0.005) {
+        payment_status = paid > 0.005 ? 'partial' : 'pending';
+      }
+
+      const bankLabel = (formData.bank_account_label || '').trim();
+      let payment_method = 'Cash';
+      if (cashAmt > 0.005 && bankAmt > 0.005) {
+        payment_method = `Mixed (Cash + ${bankLabel || 'Account'})`;
+      } else if (bankAmt > 0.005) {
+        payment_method = bankLabel || 'Bank / Wallet';
+      } else {
+        payment_method = 'Cash';
+      }
+
       const invoiceNumber = `INV-${Date.now()}`;
 
-      // Insert sale
-      const saleResult = await db.prepare(`
+      const saleResult = await db
+        .prepare(`
         INSERT INTO sales 
         (invoice_number, customer_id, total_amount, discount_amount, tax_amount, 
-         final_amount, payment_method, payment_status, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        invoiceNumber,
-        formData.customer_id || null,
-        subtotal,
-        totalDiscount,
-        totalTax,
-        finalAmount,
-        formData.payment_method,
-        formData.payment_method === 'Cash' ? 'paid' : 'pending',
-        formData.notes || null
-      );
+         final_amount, payment_method, payment_status, notes, cash_amount, bank_amount, bank_account_label)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+        .run(
+          invoiceNumber,
+          formData.customer_id || null,
+          subtotal,
+          totalDiscount,
+          totalTax,
+          finalAmount,
+          payment_method,
+          payment_status,
+          formData.notes || null,
+          cashAmt,
+          bankAmt,
+          bankLabel || null
+        );
 
       const saleId = saleResult.lastInsertRowid;
 
-      // Insert sale items
       for (const item of cart) {
         const itemSubtotal = item.quantity * item.unit_price;
         const itemDiscount = (itemSubtotal * item.discount) / 100;
         const itemAfterDiscount = itemSubtotal - itemDiscount;
         const itemTax = (itemAfterDiscount * item.tax) / 100;
 
-        await db.prepare(`
+        await db
+          .prepare(`
           INSERT INTO sale_items 
           (sale_id, product_id, quantity, unit_price, discount, tax, subtotal)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          saleId,
-          item.product_id,
-          item.quantity,
-          item.unit_price,
-          item.discount,
-          item.tax,
-          itemSubtotal - itemDiscount + itemTax
-        );
+        `)
+          .run(
+            saleId,
+            item.product_id,
+            item.quantity,
+            item.unit_price,
+            item.discount,
+            item.tax,
+            itemSubtotal - itemDiscount + itemTax
+          );
 
-        // Update stock
-        const currentStock = await db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ?').get(item.product_id);
-        if (currentStock) {
-          await db.prepare(`
-            UPDATE stock_levels 
-            SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP
-            WHERE product_id = ?
-          `).run(item.quantity, item.product_id);
-        } else {
-          // Initialize stock if doesn't exist
-          await db.prepare(`
-            INSERT INTO stock_levels (product_id, quantity, updated_at)
-            VALUES (?, 0, CURRENT_TIMESTAMP)
-          `).run(item.product_id);
+        const qtyAvail = await getCurrentProductStock(db, item.product_id);
+        const nextQty = qtyAvail - item.quantity;
+
+        let existing = await db.prepare('SELECT * FROM stock_levels WHERE product_id = ?').get(item.product_id);
+        if (!existing && /^\d+$/.test(String(item.product_id))) {
+          existing = await db
+            .prepare('SELECT * FROM stock_levels WHERE product_id = ?')
+            .get(parseInt(String(item.product_id), 10));
         }
 
-        // Add inventory transaction
-        await db.prepare(`
+        if (existing) {
+          await db
+            .prepare(`
+            UPDATE stock_levels 
+            SET quantity = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE product_id = ?
+          `)
+            .run(nextQty, item.product_id);
+        } else {
+          await db
+            .prepare(`
+            INSERT INTO stock_levels (product_id, quantity, low_stock_threshold, updated_at)
+            VALUES (?, ?, 10, CURRENT_TIMESTAMP)
+          `)
+            .run(item.product_id, nextQty);
+        }
+
+        await db
+          .prepare(`
           INSERT INTO inventory (product_id, transaction_type, quantity, notes)
           VALUES (?, 'OUT', ?, ?)
-        `).run(item.product_id, item.quantity, `Sale - Invoice: ${invoiceNumber}`);
+        `)
+          .run(item.product_id, item.quantity, `Sale - Invoice: ${invoiceNumber}`);
       }
 
-      // Update customer outstanding balance if credit sale
-      if (formData.customer_id && formData.payment_method !== 'Cash') {
-        await db.prepare(`
+      if (formData.customer_id && creditPortion > 0.005) {
+        await db
+          .prepare(`
           UPDATE customers 
-          SET outstanding_balance = outstanding_balance + ?
+          SET outstanding_balance = COALESCE(outstanding_balance, 0) + ?
           WHERE id = ?
-        `).run(finalAmount, formData.customer_id);
+        `)
+          .run(creditPortion, formData.customer_id);
       }
 
       await loadSales();
       handleCloseModal();
+      toastSuccess(`Sale saved — ${invoiceNumber}. Stock updated.`);
     } catch (error) {
       console.error('Error saving sale:', error);
-      alert('Error saving sale.');
+      toastError(error?.message || 'Could not save sale. Check connection and try again.');
     }
   };
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
-    // Reload products and customers when opening modal to ensure latest data
     loadProducts();
     loadCustomers();
   };
@@ -243,38 +322,48 @@ const Sales = () => {
     setCart([]);
     setFormData({
       customer_id: '',
-      payment_method: 'Cash',
-      notes: ''
+      cash_paid: '',
+      bank_paid: '',
+      bank_account_label: '',
+      notes: '',
     });
   };
 
   const { subtotal, totalDiscount, totalTax, finalAmount } = calculateTotals();
+  const cashAmt = Math.max(0, parseFloat(formData.cash_paid) || 0);
+  const bankAmt = Math.max(0, parseFloat(formData.bank_paid) || 0);
+  const paidShown = Math.round((cashAmt + bankAmt) * 100) / 100;
+  const dueShown = Math.max(0, Math.round((finalAmount - paidShown) * 100) / 100);
 
   const columns = [
     { key: 'invoice_number', label: 'Invoice #', width: '15%' },
     { key: 'customer_name', label: 'Customer', width: '20%' },
-    { 
-      key: 'sale_date', 
-      label: 'Date', 
+    {
+      key: 'sale_date',
+      label: 'Date',
       width: '15%',
-      render: (value) => new Date(value).toLocaleString()
+      render: (value) => new Date(value).toLocaleString(),
     },
-    { 
-      key: 'final_amount', 
-      label: 'Amount', 
+    {
+      key: 'final_amount',
+      label: 'Amount',
       width: '15%',
-      render: (value) => `Rs. ${parseFloat(value || 0).toLocaleString()}`
+      render: (value) => `Rs. ${parseFloat(value || 0).toLocaleString()}`,
     },
-    { key: 'payment_method', label: 'Payment Method', width: '15%' },
-    { 
-      key: 'payment_status', 
-      label: 'Status', 
+    { key: 'payment_method', label: 'Payment', width: '15%' },
+    {
+      key: 'payment_status',
+      label: 'Status',
       width: '10%',
       render: (value) => (
-        <span className={value === 'paid' ? 'status-paid' : 'status-pending'}>
+        <span
+          className={
+            value === 'paid' ? 'status-paid' : value === 'partial' ? 'status-partial' : 'status-pending'
+          }
+        >
           {value}
         </span>
-      )
+      ),
     },
   ];
 
@@ -291,54 +380,49 @@ const Sales = () => {
         <Table columns={columns} data={sales} />
       </Card>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title="New Sale"
-        size="large"
-      >
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal} title="New Sale" size="large">
         <form onSubmit={handleSubmit}>
           <div className="form-row">
             <div className="form-group">
-              <label className="input-label">Customer (Optional)</label>
+              <label className="input-label">Customer (optional)</label>
               <select
                 className="input"
                 value={formData.customer_id}
                 onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
               >
-                <option value="">Walk-in Customer</option>
-                {Array.isArray(customers) && customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                <option value="">Walk-in customer</option>
+                {Array.isArray(customers) &&
+                  customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
               </select>
-            </div>
-            <div className="form-group">
-              <label className="input-label">Payment Method</label>
-              <select
-                className="input"
-                value={formData.payment_method}
-                onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-              >
-                <option value="Cash">Cash</option>
-                <option value="Bank Transfer">Bank Transfer</option>
-                <option value="JazzCash">JazzCash</option>
-                <option value="EasyPaisa">EasyPaisa</option>
-                <option value="Credit">Credit</option>
-              </select>
+              {selectedCustomer && (
+                <div className="sales-customer-balance">
+                  <strong>Account balance (due):</strong>{' '}
+                  Rs. {parseFloat(selectedCustomer.outstanding_balance || 0).toLocaleString()}
+                  {selectedCustomer.credit_limit != null && (
+                    <span className="sales-credit-limit">
+                      {' '}
+                      · Credit limit Rs. {parseFloat(selectedCustomer.credit_limit || 0).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           <div className="cart-section">
-            <h4>Add Products</h4>
+            <h4>Add products</h4>
             <div className="product-grid">
-              {Array.isArray(products) && products.map((product) => (
-                <div key={product.id} className="product-card" onClick={() => addToCart(product)}>
-                  <div className="product-name">{product.name}</div>
-                  <div className="product-price">Rs. {product.sale_price}</div>
-                </div>
-              ))}
+              {Array.isArray(products) &&
+                products.map((product) => (
+                  <div key={product.id} className="product-card" onClick={() => addToCart(product)}>
+                    <div className="product-name">{product.name}</div>
+                    <div className="product-price">Rs. {product.sale_price}</div>
+                  </div>
+                ))}
             </div>
           </div>
 
@@ -359,7 +443,11 @@ const Sales = () => {
                   </thead>
                   <tbody>
                     {cart.map((item) => {
-                      const itemTotal = item.quantity * item.unit_price * (1 - item.discount / 100) * (1 + item.tax / 100);
+                      const itemTotal =
+                        item.quantity *
+                        item.unit_price *
+                        (1 - item.discount / 100) *
+                        (1 + item.tax / 100);
                       return (
                         <tr key={item.product_id}>
                           <td>{item.product_name}</td>
@@ -368,7 +456,9 @@ const Sales = () => {
                               type="number"
                               min="1"
                               value={item.quantity}
-                              onChange={(e) => updateCartItem(item.product_id, 'quantity', e.target.value)}
+                              onChange={(e) =>
+                                updateCartItem(item.product_id, 'quantity', e.target.value)
+                              }
                               className="cart-input"
                             />
                           </td>
@@ -379,7 +469,9 @@ const Sales = () => {
                               min="0"
                               max="100"
                               value={item.discount}
-                              onChange={(e) => updateCartItem(item.product_id, 'discount', e.target.value)}
+                              onChange={(e) =>
+                                updateCartItem(item.product_id, 'discount', e.target.value)
+                              }
                               className="cart-input"
                             />
                           </td>
@@ -420,6 +512,48 @@ const Sales = () => {
                   <span>Rs. {finalAmount.toFixed(2)}</span>
                 </div>
               </div>
+
+              <div className="sales-payment-split">
+                <h4>Payment split</h4>
+                <p className="sales-payment-hint">
+                  Enter cash and/or bank wallet amounts. Any unpaid total is added to the customer&apos;s
+                  balance (if a customer is selected).
+                </p>
+                <div className="form-row">
+                  <Input
+                    label="Cash (Rs)"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.cash_paid}
+                    onChange={(e) => setFormData({ ...formData, cash_paid: e.target.value })}
+                    placeholder="0"
+                  />
+                  <Input
+                    label="Bank / wallet (Rs)"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.bank_paid}
+                    onChange={(e) => setFormData({ ...formData, bank_paid: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <Input
+                  label="Account label (e.g. JazzCash, HBL)"
+                  value={formData.bank_account_label}
+                  onChange={(e) => setFormData({ ...formData, bank_account_label: e.target.value })}
+                  placeholder="Optional — shown on invoice"
+                />
+                <div className="sales-payment-summary">
+                  <span>Paid now: Rs. {paidShown.toFixed(2)}</span>
+                  <span className={dueShown > 0.005 ? 'sales-due' : ''}>
+                    {dueShown > 0.005
+                      ? `On account: Rs. ${dueShown.toFixed(2)}`
+                      : 'Fully paid'}
+                  </span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -435,7 +569,7 @@ const Sales = () => {
               Cancel
             </Button>
             <Button type="submit" disabled={cart.length === 0}>
-              Complete Sale
+              Complete sale
             </Button>
           </div>
         </form>
@@ -445,4 +579,3 @@ const Sales = () => {
 };
 
 export default Sales;
-

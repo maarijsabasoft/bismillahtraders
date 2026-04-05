@@ -8,10 +8,12 @@ import Input from '../../components/Input/Input';
 import Modal from '../../components/Modal/Modal';
 import Table from '../../components/Table/Table';
 import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
+import { useToast } from '../../context/ToastContext';
 import './Customers.css';
 
 const Customers = () => {
   const { db, isReady, dataRevision } = useDatabase();
+  const { toastError } = useToast();
   const { readListCache, writeListCache } = useListCache();
   const [customers, setCustomers] = useState(
     () => readListCache(LIST_CACHE_KEYS.customers) ?? []
@@ -86,7 +88,7 @@ const Customers = () => {
       handleCloseModal();
     } catch (error) {
       console.error('Error saving customer:', error);
-      alert('Error saving customer.');
+      toastError('Error saving customer.');
     }
   };
 
@@ -109,7 +111,7 @@ const Customers = () => {
         await loadCustomers();
       } catch (error) {
         console.error('Error deleting customer:', error);
-        alert('Cannot delete customer. It may have associated sales.');
+        toastError('Cannot delete customer. It may have associated sales.');
       }
     }
   };
@@ -234,6 +236,13 @@ const Customers = () => {
             value={formData.credit_limit}
             onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })}
           />
+          {editingCustomer && (
+            <p className="customers-balance-readonly">
+              Outstanding balance: Rs.{' '}
+              {Number(editingCustomer.outstanding_balance || 0).toLocaleString()} — updated automatically
+              from sales (credit).
+            </p>
+          )}
           <div className="form-actions">
             <Button type="button" variant="secondary" onClick={handleCloseModal}>
               Cancel

@@ -3,6 +3,7 @@ import { initDatabase, getDatabase, saveDatabase } from '../utils/database';
 import { initMongoDatabase, getMongoDatabase } from '../utils/database-mongodb';
 import { initHybridDatabase, getHybridDatabase } from '../utils/database-hybrid';
 import { subscribeDataMutation } from '../utils/dataSync';
+import { useToast } from './ToastContext';
 
 const DatabaseContext = createContext();
 
@@ -47,6 +48,7 @@ function shouldUseVercelDB() {
 }
 
 export const DatabaseProvider = ({ children }) => {
+  const { toastError } = useToast();
   const [db, setDb] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [dbMode, setDbMode] = useState('local'); // 'local', 'vercel', or 'hybrid'
@@ -129,7 +131,10 @@ export const DatabaseProvider = ({ children }) => {
           console.error(
             '❌ MongoDB initialization failed. On Vercel, set MONGODB_URI (and optional MONGODB_DB_NAME) in Project → Settings → Environment Variables. Locally use `npm run dev:vercel` with MONGODB_URI in .env.'
           );
-          alert('Database connection failed. Check server env MONGODB_URI and that the API (/api/db/mongodb) is reachable.');
+          toastError(
+            'Database connection failed. Check server env MONGODB_URI and that the API (/api/db/mongodb) is reachable.',
+            0
+          );
         }
         
         // Fallback to local database (Electron/IndexedDB)

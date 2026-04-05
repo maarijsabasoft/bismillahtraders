@@ -30,7 +30,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   return (
     <>
-      <aside className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
+      <aside className={`sidebar no-print ${isOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-header">
           <h1 className="sidebar-logo">Bismillah Traders</h1>
           <button className="sidebar-close" onClick={onClose} aria-label="Close menu">

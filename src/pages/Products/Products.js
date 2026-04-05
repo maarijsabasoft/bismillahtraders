@@ -10,6 +10,7 @@ import Modal from '../../components/Modal/Modal';
 import Table from '../../components/Table/Table';
 import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
 import { mongoCrudErrorMessage } from '../../utils/mongoErrors';
+import { useToast } from '../../context/ToastContext';
 import './Products.css';
 
 function sortCompaniesByName(rows) {
@@ -28,6 +29,7 @@ function readCachedCompaniesForDropdown(readListCache) {
 
 const Products = () => {
   const { db, isReady, dbMode, dataRevision } = useDatabase();
+  const { toastError } = useToast();
   const { readListCache, writeListCache } = useListCache();
   const location = useLocation();
   const [products, setProducts] = useState(
@@ -180,7 +182,7 @@ const Products = () => {
 
     const companyIdForDb = normalizeCompanyIdForDb(data.company_id);
     if (dbMode === 'mongodb' && !companyIdForDb) {
-      alert('Please select a company.');
+      toastError('Please select a company.');
       return;
     }
 
@@ -236,7 +238,7 @@ const Products = () => {
         setEditingProduct(ed);
         setFormData(rollbackForm);
         setIsModalOpen(true);
-        alert(
+        toastError(
           `Could not save product.\n\n${mongoCrudErrorMessage(error, dbMode, {
             duplicateHint: 'SKU must be unique. Clear SKU or use a different one.',
           })}`
@@ -271,7 +273,7 @@ const Products = () => {
     } catch (error) {
       console.error('Error saving product:', error);
       setProducts((prev) => prev.filter((p) => p.id !== tempId));
-      alert(
+      toastError(
         `Could not save product.\n\n${mongoCrudErrorMessage(error, dbMode, {
           duplicateHint: 'SKU must be unique. Clear SKU or use a different one.',
         })}`
@@ -314,7 +316,7 @@ const Products = () => {
       } catch (error) {
         console.error('Error deleting product:', error);
         setProducts(snapshot);
-        alert(`Could not delete product.\n\n${mongoCrudErrorMessage(error, dbMode)}`);
+        toastError(`Could not delete product.\n\n${mongoCrudErrorMessage(error, dbMode)}`);
       }
     }
   };
