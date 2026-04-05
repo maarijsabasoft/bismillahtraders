@@ -9,6 +9,10 @@ import Modal from '../../components/Modal/Modal';
 import Table from '../../components/Table/Table';
 import { FiPlus } from 'react-icons/fi';
 import { useToast } from '../../context/ToastContext';
+import {
+  inventoryQuantitySignedDelta,
+  sumInventorySignedQuantity,
+} from '../../utils/inventoryStock';
 import './Inventory.css';
 
 const Inventory = () => {
@@ -51,7 +55,7 @@ const Inventory = () => {
         db.prepare('SELECT * FROM products WHERE is_active = 1 ORDER BY name').all(),
         db.prepare('SELECT * FROM companies').all(),
         db.prepare('SELECT * FROM stock_levels').all(),
-        db.prepare('SELECT product_id, quantity FROM inventory').all(),
+        db.prepare('SELECT product_id, quantity, transaction_type FROM inventory').all(),
       ]);
       
       const products = Array.isArray(productsResult) ? productsResult : [];
@@ -76,27 +80,27 @@ const Inventory = () => {
       
       // Calculate actual stock from inventory transactions (source of truth)
       const calculatedStock = {};
-      inventoryTransactions.forEach(transaction => {
-        const productId = transaction.product_id?.toString() || 
-                         transaction.productId?.toString() || 
-                         transaction.product_id || 
-                         transaction.productId;
+      inventoryTransactions.forEach((transaction) => {
+        const productId =
+          transaction.product_id?.toString() ||
+          transaction.productId?.toString() ||
+          transaction.product_id ||
+          transaction.productId;
         if (productId) {
           const idStr = String(productId);
-          const quantity = parseInt(transaction.quantity) || 0;
-          
+          const delta = inventoryQuantitySignedDelta(transaction);
+
           if (!calculatedStock[idStr]) {
             calculatedStock[idStr] = 0;
           }
-          calculatedStock[idStr] += quantity;
-          
-          // Also track integer version
-          const idNum = parseInt(idStr);
-          if (!isNaN(idNum)) {
+          calculatedStock[idStr] += delta;
+
+          const idNum = parseInt(idStr, 10);
+          if (!Number.isNaN(idNum)) {
             if (!calculatedStock[idNum]) {
               calculatedStock[idNum] = 0;
             }
-            calculatedStock[idNum] += quantity;
+            calculatedStock[idNum] += delta;
             calculatedStock[String(idNum)] = calculatedStock[idNum];
           }
         }
@@ -211,11 +215,12 @@ const Inventory = () => {
       });
 
       // Stock from existing transactions only (before this row is inserted)
-      const priorTransactions = await db.prepare('SELECT quantity FROM inventory WHERE product_id = ?').all(productId);
-      let currentQuantity = 0;
-      if (Array.isArray(priorTransactions) && priorTransactions.length > 0) {
-        currentQuantity = priorTransactions.reduce((sum, t) => sum + (parseInt(t.quantity, 10) || 0), 0);
-      }
+      const priorTransactions = await db
+        .prepare('SELECT quantity, transaction_type FROM inventory WHERE product_id = ?')
+        .all(productId);
+      const currentQuantity = sumInventorySignedQuantity(
+        Array.isArray(priorTransactions) ? priorTransactions : []
+      );
 
       const newQuantity = currentQuantity + transactionQuantity;
       if (newQuantity < 0) {

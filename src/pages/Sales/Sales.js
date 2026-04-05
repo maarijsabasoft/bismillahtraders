@@ -12,6 +12,7 @@ import { FiPlus, FiX, FiTrash2 } from 'react-icons/fi';
 import { getCurrentProductStock } from '../../utils/stockLevels';
 import { deleteSaleById } from '../../utils/saleDelete';
 import { applyCreditFromSale } from '../../utils/customerLedger';
+import { emitDataMutation } from '../../utils/dataSync';
 import './Sales.css';
 
 const Sales = () => {
@@ -305,6 +306,13 @@ const Sales = () => {
       await loadSales();
       handleCloseModal();
       toastSuccess(`Sale saved — ${invoiceNumber}. Stock updated.`);
+      try {
+        if (typeof window !== 'undefined') {
+          emitDataMutation({ collection: 'sales', source: 'sales-submit' });
+        }
+      } catch {
+        /* ignore */
+      }
     } catch (error) {
       console.error('Error saving sale:', error);
       toastError(error?.message || 'Could not save sale. Check connection and try again.');
@@ -342,6 +350,13 @@ const Sales = () => {
       await deleteSaleById(db, row.id);
       await loadSales();
       toastSuccess(`Sale ${inv} deleted.`);
+      try {
+        if (typeof window !== 'undefined') {
+          emitDataMutation({ collection: 'sales', source: 'sales-delete' });
+        }
+      } catch {
+        /* ignore */
+      }
     } catch (error) {
       console.error('Error deleting sale:', error);
       toastError(error?.message || 'Could not delete sale.');

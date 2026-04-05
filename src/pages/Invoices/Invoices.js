@@ -73,7 +73,11 @@ function formatInvoiceTime(d) {
 }
 
 function lineProductName(item) {
-  return item?.product_name || item?.name || item?.productName || 'Item';
+  const n = item?.product_name || item?.name || item?.productName;
+  if (n != null && String(n).trim() !== '') {
+    return String(n).trim();
+  }
+  return '\u2014';
 }
 
 // A4 Professional Invoice Component
