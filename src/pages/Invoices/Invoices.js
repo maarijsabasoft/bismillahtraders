@@ -200,122 +200,118 @@ const InvoiceA4 = ({ invoice }) => {
   );
 };
 
-// Receipt slip — thermal-style (2.5 inch)
+// Receipt slip — 80mm layout (eff1b17 size & format)
 const InvoiceSlip = ({ invoice }) => {
   const saleD = parseInvoiceDate(invoice);
   return (
-  <div className="invoice-slip">
-    <div className="slip-receipt-title">CASH RECEIPT</div>
-
-    <div className="slip-header slip-header--compact">
-      <h2 className="slip-store-name">BISMILLAH TRADERS</h2>
-      <p className="slip-sub">Beverages Management System</p>
-      <p className="slip-address">Your Business Address</p>
-      <p className="slip-contact">Tel: +92 XXX XXXXXXX</p>
-    </div>
-
-    <div className="slip-divider slip-divider--dashed" aria-hidden="true" />
-
-    <div className="slip-info">
-      <div className="slip-row">
-        <span>Receipt</span>
-        <span>{invoice.invoice_number}</span>
+    <div className="invoice-slip">
+      <div className="slip-header">
+        <h2>BISMILLAH TRADERS</h2>
+        <p>Beverages Management System</p>
+        <p className="slip-address">Your Business Address</p>
+        <p className="slip-contact">Tel: +92 XXX XXXXXXX</p>
+        <div className="slip-divider" aria-hidden="true" />
       </div>
-      <div className="slip-row">
-        <span>Date</span>
-        <span>{formatInvoiceDate(saleD)}</span>
-      </div>
-      <div className="slip-row">
-        <span>Time</span>
-        <span>{formatInvoiceTime(saleD)}</span>
-      </div>
-      {invoice.customer_name && (
+
+      <div className="slip-info">
         <div className="slip-row">
-          <span>Customer</span>
-          <span className="slip-row__val">{invoice.customer_name}</span>
+          <span>Invoice:</span>
+          <span>{invoice.invoice_number}</span>
         </div>
-      )}
-    </div>
-
-    <div className="slip-divider slip-divider--dashed" aria-hidden="true" />
-
-    <div className="slip-items">
-      {invoice.items?.map((item, index) => {
-        const name = lineProductName(item);
-        const qty = item.quantity;
-        const unit = parseFloat(item.unit_price);
-        const sub = parseFloat(item.subtotal);
-        return (
-          <div key={index} className="slip-item slip-item--receipt">
-            <div className="slip-item-num">
-              {index + 1}. {name}
-            </div>
-            <div className="slip-cost-line">
-              <span className="slip-cost-label">Qty {qty} × Rs.{unit.toFixed(2)}</span>
-              <span className="slip-cost-dots" aria-hidden="true" />
-              <span className="slip-cost-amt">Rs.{sub.toFixed(2)}</span>
-            </div>
-            {parseFloat(item.discount) > 0 && (
-              <div className="slip-discount-note">Disc. {item.discount}%</div>
-            )}
+        <div className="slip-row">
+          <span>Date:</span>
+          <span>{formatInvoiceDate(saleD)}</span>
+        </div>
+        <div className="slip-row">
+          <span>Time:</span>
+          <span>{formatInvoiceTime(saleD)}</span>
+        </div>
+        {invoice.customer_name && (
+          <div className="slip-row">
+            <span>Customer:</span>
+            <span>{invoice.customer_name}</span>
           </div>
-        );
-      })}
-    </div>
-
-    <div className="slip-divider slip-divider--dashed" aria-hidden="true" />
-
-    <div className="slip-totals slip-totals--receipt">
-      <div className="slip-cost-line slip-total-line">
-        <span>Subtotal</span>
-        <span className="slip-cost-dots" aria-hidden="true" />
-        <span>Rs.{parseFloat(invoice.total_amount).toFixed(2)}</span>
+        )}
       </div>
-      {parseFloat(invoice.discount_amount) > 0 && (
-        <div className="slip-cost-line slip-total-line">
-          <span>Discount</span>
-          <span className="slip-cost-dots" aria-hidden="true" />
-          <span>-Rs.{parseFloat(invoice.discount_amount).toFixed(2)}</span>
+
+      <div className="slip-divider" aria-hidden="true" />
+
+      <div className="slip-items">
+        {invoice.items?.map((item, index) => (
+          <div key={index} className="slip-item">
+            <div className="slip-item-name">{lineProductName(item)}</div>
+            <div className="slip-item-details">
+              <span>
+                {item.quantity} x Rs.{parseFloat(item.unit_price).toFixed(2)}
+              </span>
+              {parseFloat(item.discount) > 0 && (
+                <span className="slip-discount">-{item.discount}%</span>
+              )}
+              <span className="slip-item-total">
+                Rs.{parseFloat(item.subtotal).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="slip-divider" aria-hidden="true" />
+
+      <div className="slip-totals">
+        <div className="slip-total-row">
+          <span>Subtotal:</span>
+          <span>Rs.{parseFloat(invoice.total_amount).toFixed(2)}</span>
         </div>
-      )}
-      {parseFloat(invoice.tax_amount) > 0 && (
-        <div className="slip-cost-line slip-total-line">
-          <span>Tax</span>
-          <span className="slip-cost-dots" aria-hidden="true" />
-          <span>Rs.{parseFloat(invoice.tax_amount).toFixed(2)}</span>
+        {parseFloat(invoice.discount_amount) > 0 && (
+          <div className="slip-total-row">
+            <span>Discount:</span>
+            <span>-Rs.{parseFloat(invoice.discount_amount).toFixed(2)}</span>
+          </div>
+        )}
+        {parseFloat(invoice.tax_amount) > 0 && (
+          <div className="slip-total-row">
+            <span>Tax:</span>
+            <span>Rs.{parseFloat(invoice.tax_amount).toFixed(2)}</span>
+          </div>
+        )}
+        <div className="slip-total-row slip-total-final">
+          <span>TOTAL:</span>
+          <span>Rs.{parseFloat(invoice.final_amount).toFixed(2)}</span>
         </div>
-      )}
-      <div className="slip-total-final slip-total-final--receipt">
-        <span>TOTAL</span>
-        <span>Rs.{parseFloat(invoice.final_amount).toFixed(2)}</span>
+      </div>
+
+      <div className="slip-divider" aria-hidden="true" />
+
+      <div className="slip-footer">
+        <div className="slip-payment">
+          <p>Payment: {invoice.payment_method}</p>
+          {(() => {
+            const { cash, bank, label } = saleCashBank(invoice);
+            return (
+              <>
+                {cash > 0 && <p>Cash: Rs.{cash.toFixed(2)}</p>}
+                {bank > 0 && (
+                  <p>
+                    Bank{label ? ` (${label})` : ''}: Rs.{bank.toFixed(2)}
+                  </p>
+                )}
+              </>
+            );
+          })()}
+          <p>
+            Status:{' '}
+            <strong>{String(invoice.payment_status || '').toUpperCase()}</strong>
+          </p>
+        </div>
+        <div className="slip-barcode-line" aria-hidden="true">
+          *{String(invoice.invoice_number || '').replace(/\s/g, '')}*
+        </div>
+        <div className="slip-thanks">
+          <p>Thank You!</p>
+          <p>Visit Again</p>
+        </div>
       </div>
     </div>
-
-    <div className="slip-divider slip-divider--dashed" aria-hidden="true" />
-
-    <div className="slip-footer slip-footer--receipt">
-      <div className="slip-payment">
-        <p>Payment: {invoice.payment_method}</p>
-        {(() => {
-          const { cash, bank, label } = saleCashBank(invoice);
-          return (
-            <>
-              {cash > 0 && <p>Cash: Rs.{cash.toFixed(2)}</p>}
-              {bank > 0 && <p>Bank{label ? ` (${label})` : ''}: Rs.{bank.toFixed(2)}</p>}
-            </>
-          );
-        })()}
-        <p>Status: <strong>{String(invoice.payment_status || '').toUpperCase()}</strong></p>
-      </div>
-      <div className="slip-barcode-line" aria-hidden="true">
-        *{String(invoice.invoice_number || '').replace(/\s/g, '')}*
-      </div>
-      <div className="slip-thanks slip-thanks--caps">
-        <p>THANK YOU FOR SHOPPING!</p>
-        <p className="slip-thanks-sub">Visit again</p>
-      </div>
-    </div>
-  </div>
   );
 };
 
@@ -486,7 +482,7 @@ const Invoices = () => {
                 variant="secondary"
                 size="small"
                 className="btn-icon-only"
-                title="Print receipt slip (2.5 inch)"
+                title="Print receipt slip (80mm)"
                 aria-label="Print receipt slip"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -558,7 +554,7 @@ const Invoices = () => {
                     variant="secondary"
                     size="small"
                     className="btn-icon-only"
-                    title="Print receipt slip (2.5 inch)"
+                    title="Print receipt slip (80mm)"
                     aria-label="Print receipt slip"
                     onClick={() => printInvoice(selectedInvoice, 'slip')}
                   >

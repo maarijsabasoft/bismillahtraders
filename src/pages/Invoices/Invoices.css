@@ -242,8 +242,8 @@
 
 .invoice-a4 .totals-section {
   margin-left: auto;
-  width: 100%;
-  max-width: 280px;
+  width: 300px;
+  max-width: 100%;
   border: 1px solid #ddd;
   padding: 15px;
   background: #f9f9f9;
@@ -320,190 +320,158 @@
   font-style: italic;
 }
 
-/* Receipt slip — 2.5" thermal (POS-style) */
+/* Receipt slip — 80mm (eff1b17) */
 .invoice-slip {
-  width: 2.5in;
-  max-width: 2.5in;
+  max-width: 80mm;
   margin: 0 auto;
-  padding: 0.12in 0.1in 0.18in;
+  padding: 10mm 8mm;
   background: white;
   font-family: 'Courier New', 'Consolas', 'Lucida Console', monospace;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.35;
   color: #000;
   box-sizing: border-box;
 }
 
-.invoice-slip .slip-receipt-title {
+.invoice-slip .slip-header {
   text-align: center;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  margin: 0 0 8px;
+  margin-bottom: 15px;
 }
 
-.invoice-slip .slip-header--compact {
-  text-align: center;
-  margin-bottom: 0;
-}
-
-.invoice-slip .slip-store-name {
-  margin: 0 0 2px;
-  font-size: 13px;
+.invoice-slip .slip-header h2 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
 }
 
-.invoice-slip .slip-sub,
+.invoice-slip .slip-header p {
+  margin: 2px 0;
+  font-size: 10px;
+}
+
 .invoice-slip .slip-address,
 .invoice-slip .slip-contact {
-  margin: 2px 0;
   font-size: 9px;
+  margin: 2px 0;
 }
 
-.invoice-slip .slip-divider--dashed {
-  border: none;
+.invoice-slip .slip-divider {
   border-top: 1px dashed #000;
-  margin: 8px 0;
+  margin: 10px 0;
   height: 0;
 }
 
 .invoice-slip .slip-info {
-  margin-bottom: 4px;
+  margin-bottom: 10px;
 }
 
 .invoice-slip .slip-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  gap: 6px;
-  margin: 3px 0;
-  font-size: 9px;
+  gap: 8px;
+  margin: 4px 0;
+  font-size: 11px;
 }
 
-.invoice-slip .slip-row__val {
+.invoice-slip .slip-row span:last-child {
   text-align: right;
   word-break: break-word;
 }
 
 .invoice-slip .slip-items {
-  margin: 6px 0;
+  margin: 10px 0;
 }
 
-.invoice-slip .slip-item--receipt {
-  margin-bottom: 10px;
+.invoice-slip .slip-item {
+  margin-bottom: 8px;
   padding-bottom: 6px;
-  border-bottom: 1px dotted #999;
+  border-bottom: 1px dotted #ccc;
 }
 
-.invoice-slip .slip-item--receipt:last-child {
+.invoice-slip .slip-item:last-child {
   border-bottom: none;
 }
 
-.invoice-slip .slip-item-num {
-  font-weight: 700;
-  font-size: 9px;
-  margin-bottom: 2px;
+.invoice-slip .slip-item-name {
+  font-weight: 600;
+  font-size: 11px;
+  margin-bottom: 3px;
   word-break: break-word;
 }
 
-.invoice-slip .slip-cost-line {
-  display: flex;
-  align-items: baseline;
-  width: 100%;
-  margin-top: 2px;
-  font-size: 9px;
-}
-
-.invoice-slip .slip-cost-label {
-  flex-shrink: 0;
-  max-width: 58%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.invoice-slip .slip-cost-dots {
-  flex: 1;
-  min-width: 4px;
-  border-bottom: 1px dotted #000;
-  margin: 0 3px 1px;
-  height: 1px;
-}
-
-.invoice-slip .slip-cost-amt {
-  flex-shrink: 0;
-  font-weight: 700;
-}
-
-.invoice-slip .slip-discount-note {
-  font-size: 8px;
-  color: #333;
-  margin-top: 2px;
-}
-
-.invoice-slip .slip-totals--receipt {
-  margin: 6px 0;
-}
-
-.invoice-slip .slip-total-line {
-  margin: 4px 0;
-}
-
-.invoice-slip .slip-total-final--receipt {
+.invoice-slip .slip-item-details {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  font-weight: 800;
+  align-items: baseline;
+  font-size: 10px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.invoice-slip .slip-discount {
+  color: #d32f2f;
+  margin: 0 5px;
+}
+
+.invoice-slip .slip-item-total {
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.invoice-slip .slip-totals {
+  margin: 10px 0;
+}
+
+.invoice-slip .slip-total-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 5px 0;
   font-size: 11px;
-  border-top: 2px solid #000;
-  border-bottom: 2px solid #000;
+}
+
+.invoice-slip .slip-total-final {
+  font-weight: 700;
+  font-size: 14px;
+  border-top: 1px solid #000;
+  border-bottom: 1px solid #000;
   padding: 6px 0;
   margin-top: 8px;
 }
 
-.invoice-slip .slip-footer--receipt {
+.invoice-slip .slip-footer {
   text-align: center;
-  margin-top: 10px;
+  margin-top: 15px;
 }
 
 .invoice-slip .slip-payment {
-  margin-bottom: 8px;
-  font-size: 9px;
+  margin-bottom: 10px;
+  font-size: 10px;
   text-align: left;
 }
 
 .invoice-slip .slip-payment p {
-  margin: 2px 0;
+  margin: 3px 0;
 }
 
 .invoice-slip .slip-barcode-line {
   font-family: 'Courier New', monospace;
   font-size: 11px;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   margin: 8px 0 6px;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.invoice-slip .slip-thanks--caps {
-  margin-top: 6px;
-  font-weight: 700;
-}
-
-.invoice-slip .slip-thanks--caps p {
-  margin: 4px 0;
-  font-size: 10px;
-  letter-spacing: 0.04em;
-}
-
-.invoice-slip .slip-thanks-sub {
-  font-size: 9px !important;
+.invoice-slip .slip-thanks {
+  margin-top: 15px;
   font-weight: 600;
-  letter-spacing: normal !important;
-  text-transform: none;
+}
+
+.invoice-slip .slip-thanks p {
+  margin: 3px 0;
+  font-size: 11px;
 }
 
 .status-paid {
@@ -554,18 +522,16 @@
     padding: 0;
   }
 
-  /* A4 — full sheet (app header/sidebar hidden via .no-print + print.css) */
+  /* A4 print — eff1b17: 210mm content, 20mm padding */
   .invoice-a4-print.active {
-    page: a4invoice;
-    page-break-after: auto;
+    page-break-after: always;
   }
 
   .invoice-a4-print.active .invoice-a4 {
+    max-width: 210mm !important;
     width: 100% !important;
-    max-width: 100% !important;
-    min-height: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    margin: 0 auto !important;
+    padding: 20mm !important;
     box-sizing: border-box !important;
     box-shadow: none !important;
     overflow: visible !important;
@@ -582,61 +548,29 @@
     color: #123056 !important;
   }
 
-  /* Slip — fixed 2.5" content, centered (thermal width in preview even if paper is A4) */
+  /* Slip print — eff1b17: 80mm column */
   .invoice-slip-print.active {
-    page: slipreceipt;
-    page-break-after: auto;
-    width: 100% !important;
-    max-width: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
+    page-break-after: always;
   }
 
   .invoice-slip-print.active .invoice-slip {
-    width: 2.5in !important;
-    min-width: 0 !important;
-    max-width: 2.5in !important;
+    max-width: 80mm !important;
+    width: 100% !important;
     margin: 0 auto !important;
-    padding: 0.12in 0.1in !important;
+    padding: 10mm 8mm !important;
     box-sizing: border-box !important;
     box-shadow: none !important;
-    font-size: 9pt !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  .invoice-slip-print.active .invoice-slip .slip-receipt-title {
-    font-size: 10pt !important;
-  }
-
-  .invoice-slip-print.active .invoice-slip .slip-store-name {
-    font-size: 10pt !important;
-  }
-
-  .invoice-slip-print.active .invoice-slip .slip-row {
-    font-size: 8.5pt !important;
-  }
-
-  .invoice-slip-print.active .invoice-slip .slip-total-final--receipt {
-    font-size: 11pt !important;
-  }
-
   @page {
+    size: A4;
     margin: 0;
   }
 
-  @page a4invoice {
-    size: A4 portrait;
-    margin: 10mm;
-  }
-
-  @page slipreceipt {
-    size: 2.5in auto;
-    margin: 0.06in;
+  @page :first {
+    margin: 0;
   }
 }
 
@@ -658,19 +592,17 @@
 }
 
 .invoice-container.invoice-slip {
-  width: 2.5in;
-  max-width: min(2.5in, 100%);
+  max-width: 80mm;
+  width: 100%;
   margin: 20px auto;
-  padding: 10px 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   box-sizing: border-box;
 }
 
-/* One thermal column: outer box is 2.5", inner receipt fills it (no double fixed width). */
 .invoice-container.invoice-slip .invoice-slip {
-  width: 100%;
-  max-width: 100%;
   margin: 0 auto;
+  max-width: 100%;
 }
 
 /* Ensure invoice-view allows horizontal scroll on mobile */
@@ -713,10 +645,8 @@
   }
 
   .invoice-container.invoice-slip {
-    width: 2.5in;
-    max-width: min(2.5in, calc(100vw - 48px));
+    max-width: min(80mm, 100%);
     margin: 16px auto;
-    padding: 10px 8px;
   }
 }
 
@@ -750,9 +680,7 @@
   }
 
   .invoice-container.invoice-slip {
-    width: 2.5in;
-    max-width: min(2.5in, calc(100vw - 32px));
+    max-width: 100%;
     margin: 12px auto;
-    padding: 10px 8px;
   }
 }
