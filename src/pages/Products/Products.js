@@ -12,6 +12,20 @@ import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
 import { mongoCrudErrorMessage } from '../../utils/mongoErrors';
 import './Products.css';
 
+function sortCompaniesByName(rows) {
+  if (!Array.isArray(rows)) return [];
+  return [...rows].sort((a, b) =>
+    String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' })
+  );
+}
+
+function readCachedCompaniesForDropdown(readListCache) {
+  const pc = readListCache(LIST_CACHE_KEYS.productsCompanies);
+  if (pc?.length) return pc;
+  const c = readListCache(LIST_CACHE_KEYS.companies);
+  return c?.length ? sortCompaniesByName(c) : [];
+}
+
 const Products = () => {
   const { db, isReady, dbMode, dataRevision } = useDatabase();
   const { readListCache, writeListCache } = useListCache();
@@ -19,8 +33,8 @@ const Products = () => {
   const [products, setProducts] = useState(
     () => readListCache(LIST_CACHE_KEYS.productsRows) ?? []
   );
-  const [companies, setCompanies] = useState(
-    () => readListCache(LIST_CACHE_KEYS.productsCompanies) ?? []
+  const [companies, setCompanies] = useState(() =>
+    readCachedCompaniesForDropdown(readListCache)
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -62,9 +76,21 @@ const Products = () => {
 
   const loadProducts = async () => {
     try {
+      const companiesPromise = db.prepare('SELECT * FROM companies ORDER BY name').all();
+      const productsPromise = db.prepare('SELECT * FROM products ORDER BY created_at DESC').all();
+
+      companiesPromise
+        .then((companiesEarly) => {
+          const rows = Array.isArray(companiesEarly) ? companiesEarly : [];
+          if (rows.length > 0) {
+            setCompanies(sortCompaniesByName(rows));
+          }
+        })
+        .catch(() => {});
+
       const [productsResult, companiesResult] = await Promise.all([
-        db.prepare('SELECT * FROM products ORDER BY created_at DESC').all(),
-        db.prepare('SELECT * FROM companies').all(),
+        productsPromise,
+        companiesPromise,
       ]);
 
       const products = Array.isArray(productsResult) ? productsResult : [];
@@ -132,11 +158,7 @@ const Products = () => {
       });
 
       setProducts(productsWithCompanies);
-
-      const sortedCompanies = [...companies].sort((a, b) =>
-        String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' })
-      );
-      setCompanies(sortedCompanies);
+      setCompanies(sortCompaniesByName(companies));
     } catch (error) {
       console.error('Error loading products:', error);
       setProducts([]);
@@ -299,6 +321,10 @@ const Products = () => {
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
+    const seeded = readCachedCompaniesForDropdown(readListCache);
+    if (seeded.length > 0) {
+      setCompanies(seeded);
+    }
   };
 
   const handleCloseModal = () => {

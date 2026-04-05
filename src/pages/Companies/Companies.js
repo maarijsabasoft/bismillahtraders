@@ -50,6 +50,12 @@ const Companies = () => {
 
   useEffect(() => {
     writeListCache(LIST_CACHE_KEYS.companies, companies);
+    writeListCache(
+      LIST_CACHE_KEYS.productsCompanies,
+      [...companies].sort((a, b) =>
+        String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' })
+      )
+    );
   }, [companies, writeListCache]);
 
   const handleSubmit = async (e) => {
