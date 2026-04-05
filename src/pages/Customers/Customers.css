@@ -15,6 +15,83 @@
   border: 1px solid var(--lp-line-light);
 }
 
+.customers-ledger-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: var(--lp-cream);
+  border-radius: 10px;
+  border: 1px solid var(--lp-line-light);
+}
+
+.customers-ledger-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.customers-ledger-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--lp-muted);
+}
+
+.customers-ledger-summary strong {
+  font-size: 18px;
+  color: var(--lp-ink);
+}
+
+.customers-ledger-remaining {
+  color: #b91c1c !important;
+}
+
+.customers-ledger-hint {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--lp-muted);
+  margin: 0 0 16px;
+}
+
+.customers-ledger-form {
+  max-width: 480px;
+}
+
+.customers-history-empty {
+  color: var(--lp-muted);
+  margin: 0;
+  padding: 12px 0;
+}
+
+.customers-history-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.customers-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.customers-history-table th,
+.customers-history-table td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--lp-line-light);
+}
+
+.customers-history-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--lp-muted);
+  background: var(--lp-cream);
+}
+
 @media (max-width: 768px) {
   .customers-page {
     max-width: 100%;

@@ -11,6 +11,7 @@ import Table from '../../components/Table/Table';
 import { FiPlus, FiX, FiTrash2 } from 'react-icons/fi';
 import { getCurrentProductStock } from '../../utils/stockLevels';
 import { deleteSaleById } from '../../utils/saleDelete';
+import { applyCreditFromSale } from '../../utils/customerLedger';
 import './Sales.css';
 
 const Sales = () => {
@@ -298,13 +299,7 @@ const Sales = () => {
       }
 
       if (formData.customer_id && creditPortion > 0.005) {
-        await db
-          .prepare(`
-          UPDATE customers 
-          SET outstanding_balance = COALESCE(outstanding_balance, 0) + ?
-          WHERE id = ?
-        `)
-          .run(creditPortion, formData.customer_id);
+        await applyCreditFromSale(db, formData.customer_id, creditPortion);
       }
 
       await loadSales();

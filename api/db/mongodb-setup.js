@@ -64,6 +64,9 @@ export default async function handler(req, res) {
     await customers.createIndex({ name: 1 });
     await customers.createIndex({ created_at: -1 });
 
+    const customerBalanceHistory = db.collection('customer_balance_history');
+    await customerBalanceHistory.createIndex({ customer_id: 1, entry_date: -1 });
+
     // Suppliers collection
     const suppliers = db.collection('suppliers');
     await suppliers.createIndex({ name: 1 });

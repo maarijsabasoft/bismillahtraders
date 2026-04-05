@@ -29,17 +29,29 @@
   background: white;
   font-family: 'Arial', sans-serif;
   color: var(--lp-ink);
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 .invoice-a4 .invoice-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
   margin-bottom: 30px;
   padding-bottom: 20px;
   border-bottom: 3px solid var(--lp-navy);
   background: linear-gradient(135deg, rgba(var(--lp-navy-rgb), 0.06) 0%, rgba(var(--lp-navy-rgb), 0.02) 100%);
   padding: 20px;
   border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.invoice-a4 .invoice-header .company-info,
+.invoice-a4 .invoice-header .invoice-info {
+  min-width: 0;
+  flex: 1 1 200px;
 }
 
 .invoice-a4 .company-info h1 {
@@ -107,12 +119,50 @@
 
 .invoice-a4 .invoice-items {
   margin-bottom: 25px;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .invoice-a4 .invoice-items table {
   width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   border: 1px solid #ddd;
+  box-sizing: border-box;
+}
+
+.invoice-a4 .invoice-items th:nth-child(1),
+.invoice-a4 .invoice-items td:nth-child(1) {
+  width: 5%;
+}
+
+.invoice-a4 .invoice-items th:nth-child(2),
+.invoice-a4 .invoice-items td:nth-child(2) {
+  width: 32%;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.invoice-a4 .invoice-items th:nth-child(3),
+.invoice-a4 .invoice-items td:nth-child(3) {
+  width: 9%;
+}
+
+.invoice-a4 .invoice-items th:nth-child(4),
+.invoice-a4 .invoice-items td:nth-child(4) {
+  width: 18%;
+}
+
+.invoice-a4 .invoice-items th:nth-child(5),
+.invoice-a4 .invoice-items td:nth-child(5) {
+  width: 14%;
+}
+
+.invoice-a4 .invoice-items th:nth-child(6),
+.invoice-a4 .invoice-items td:nth-child(6) {
+  width: 22%;
 }
 
 .invoice-a4 .invoice-items th {
@@ -129,9 +179,10 @@
 }
 
 .invoice-a4 .invoice-items td {
-  padding: 10px 8px;
+  padding: 10px 6px;
   border-bottom: 1px solid #eee;
-  font-size: 13px;
+  font-size: 12px;
+  vertical-align: top;
 }
 
 .invoice-a4 .invoice-items td.text-right {
@@ -142,20 +193,37 @@
   background: #f9f9f9;
 }
 
+.invoice-a4 .invoice-totals {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  box-sizing: border-box;
+}
+
 .invoice-a4 .totals-section {
   margin-left: auto;
-  width: 300px;
+  width: 100%;
+  max-width: 280px;
   border: 1px solid #ddd;
   padding: 15px;
   background: #f9f9f9;
+  box-sizing: border-box;
 }
 
 .invoice-a4 .total-row {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
   padding: 8px 0;
   font-size: 14px;
   border-bottom: 1px solid #eee;
+}
+
+.invoice-a4 .total-row span:last-child {
+  flex-shrink: 0;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .invoice-a4 .total-row:last-child {
@@ -212,133 +280,190 @@
   font-style: italic;
 }
 
-/* Receipt slip — 2.5" thermal (screen preview matches print width) */
+/* Receipt slip — 2.5" thermal (POS-style) */
 .invoice-slip {
   width: 2.5in;
   max-width: 2.5in;
   margin: 0 auto;
-  padding: 0.15in 0.12in;
+  padding: 0.12in 0.1in 0.18in;
   background: white;
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
+  font-family: 'Courier New', 'Consolas', 'Lucida Console', monospace;
+  font-size: 10px;
+  line-height: 1.35;
   color: #000;
   box-sizing: border-box;
 }
 
-.invoice-slip .slip-header {
+.invoice-slip .slip-receipt-title {
   text-align: center;
-  margin-bottom: 15px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  margin: 0 0 8px;
 }
 
-.invoice-slip .slip-header h2 {
-  margin: 0 0 4px 0;
-  font-size: 18px;
+.invoice-slip .slip-header--compact {
+  text-align: center;
+  margin-bottom: 0;
+}
+
+.invoice-slip .slip-store-name {
+  margin: 0 0 2px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0.06em;
 }
 
-.invoice-slip .slip-header p {
-  margin: 2px 0;
-  font-size: 10px;
-}
-
+.invoice-slip .slip-sub,
 .invoice-slip .slip-address,
 .invoice-slip .slip-contact {
-  font-size: 9px;
   margin: 2px 0;
+  font-size: 9px;
 }
 
-.invoice-slip .slip-divider {
+.invoice-slip .slip-divider--dashed {
+  border: none;
   border-top: 1px dashed #000;
-  margin: 10px 0;
+  margin: 8px 0;
+  height: 0;
 }
 
 .invoice-slip .slip-info {
-  margin-bottom: 10px;
+  margin-bottom: 4px;
 }
 
 .invoice-slip .slip-row {
   display: flex;
   justify-content: space-between;
-  margin: 4px 0;
-  font-size: 11px;
+  align-items: baseline;
+  gap: 6px;
+  margin: 3px 0;
+  font-size: 9px;
+}
+
+.invoice-slip .slip-row__val {
+  text-align: right;
+  word-break: break-word;
 }
 
 .invoice-slip .slip-items {
-  margin: 10px 0;
+  margin: 6px 0;
 }
 
-.invoice-slip .slip-item {
-  margin-bottom: 8px;
+.invoice-slip .slip-item--receipt {
+  margin-bottom: 10px;
   padding-bottom: 6px;
-  border-bottom: 1px dotted #ccc;
+  border-bottom: 1px dotted #999;
 }
 
-.invoice-slip .slip-item-name {
-  font-weight: 600;
-  font-size: 11px;
-  margin-bottom: 3px;
+.invoice-slip .slip-item--receipt:last-child {
+  border-bottom: none;
 }
 
-.invoice-slip .slip-item-details {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  flex-wrap: wrap;
-}
-
-.invoice-slip .slip-discount {
-  color: #d32f2f;
-  margin: 0 5px;
-}
-
-.invoice-slip .slip-item-total {
-  font-weight: 600;
-  margin-left: auto;
-}
-
-.invoice-slip .slip-totals {
-  margin: 10px 0;
-}
-
-.invoice-slip .slip-total-row {
-  display: flex;
-  justify-content: space-between;
-  margin: 5px 0;
-  font-size: 11px;
-}
-
-.invoice-slip .slip-total-final {
+.invoice-slip .slip-item-num {
   font-weight: 700;
-  font-size: 14px;
-  border-top: 1px solid #000;
-  border-bottom: 1px solid #000;
+  font-size: 9px;
+  margin-bottom: 2px;
+  word-break: break-word;
+}
+
+.invoice-slip .slip-cost-line {
+  display: flex;
+  align-items: baseline;
+  width: 100%;
+  margin-top: 2px;
+  font-size: 9px;
+}
+
+.invoice-slip .slip-cost-label {
+  flex-shrink: 0;
+  max-width: 58%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invoice-slip .slip-cost-dots {
+  flex: 1;
+  min-width: 4px;
+  border-bottom: 1px dotted #000;
+  margin: 0 3px 1px;
+  height: 1px;
+}
+
+.invoice-slip .slip-cost-amt {
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.invoice-slip .slip-discount-note {
+  font-size: 8px;
+  color: #333;
+  margin-top: 2px;
+}
+
+.invoice-slip .slip-totals--receipt {
+  margin: 6px 0;
+}
+
+.invoice-slip .slip-total-line {
+  margin: 4px 0;
+}
+
+.invoice-slip .slip-total-final--receipt {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 800;
+  font-size: 11px;
+  border-top: 2px solid #000;
+  border-bottom: 2px solid #000;
   padding: 6px 0;
   margin-top: 8px;
 }
 
-.invoice-slip .slip-footer {
+.invoice-slip .slip-footer--receipt {
   text-align: center;
-  margin-top: 15px;
+  margin-top: 10px;
 }
 
 .invoice-slip .slip-payment {
-  margin-bottom: 10px;
-  font-size: 10px;
+  margin-bottom: 8px;
+  font-size: 9px;
+  text-align: left;
 }
 
 .invoice-slip .slip-payment p {
-  margin: 3px 0;
+  margin: 2px 0;
 }
 
-.invoice-slip .slip-thanks {
-  margin-top: 15px;
-  font-weight: 600;
-}
-
-.invoice-slip .slip-thanks p {
-  margin: 3px 0;
+.invoice-slip .slip-barcode-line {
+  font-family: 'Courier New', monospace;
   font-size: 11px;
+  letter-spacing: 0.15em;
+  margin: 8px 0 6px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invoice-slip .slip-thanks--caps {
+  margin-top: 6px;
+  font-weight: 700;
+}
+
+.invoice-slip .slip-thanks--caps p {
+  margin: 4px 0;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.invoice-slip .slip-thanks-sub {
+  font-size: 9px !important;
+  font-weight: 600;
+  letter-spacing: normal !important;
+  text-transform: none;
 }
 
 .status-paid {
@@ -394,15 +519,25 @@
   }
 
   .invoice-a4-print.active .invoice-a4 {
-    width: 210mm !important;
-    max-width: 210mm !important;
-    min-height: 297mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
     margin: 0 !important;
-    padding: 14mm 16mm !important;
-    box-sizing: border-box;
+    padding: 0 !important;
+    box-sizing: border-box !important;
     box-shadow: none !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  /* Gradient text often clips in Chrome print — use solid ink */
+  .invoice-a4-print.active .invoice-a4 .company-info h1 {
+    background: none !important;
+    background-clip: border-box !important;
+    -webkit-background-clip: border-box !important;
+    -webkit-text-fill-color: #123056 !important;
+    color: #123056 !important;
   }
 
   /* Slip — page width = 2.5" roll, content fills that page (not a tiny box on A4) */
@@ -428,17 +563,20 @@
     print-color-adjust: exact;
   }
 
-  .invoice-slip-print.active .invoice-slip .slip-header h2 {
-    font-size: 11pt !important;
+  .invoice-slip-print.active .invoice-slip .slip-receipt-title {
+    font-size: 10pt !important;
   }
 
-  .invoice-slip-print.active .invoice-slip .slip-row,
-  .invoice-slip-print.active .invoice-slip .slip-item-name {
+  .invoice-slip-print.active .invoice-slip .slip-store-name {
+    font-size: 10pt !important;
+  }
+
+  .invoice-slip-print.active .invoice-slip .slip-row {
     font-size: 8.5pt !important;
   }
 
-  .invoice-slip-print.active .invoice-slip .slip-total-final {
-    font-size: 10pt !important;
+  .invoice-slip-print.active .invoice-slip .slip-total-final--receipt {
+    font-size: 11pt !important;
   }
 
   @page {
@@ -447,7 +585,7 @@
 
   @page a4invoice {
     size: A4 portrait;
-    margin: 0;
+    margin: 10mm;
   }
 
   @page slipreceipt {

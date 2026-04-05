@@ -83,6 +83,7 @@ function sqlToMongoCollection(tableName) {
     inventory: 'inventory',
     stock_levels: 'stock_levels',
     customers: 'customers',
+    customer_balance_history: 'customer_balance_history',
     suppliers: 'suppliers',
     sales: 'sales',
     sale_items: 'sale_items',

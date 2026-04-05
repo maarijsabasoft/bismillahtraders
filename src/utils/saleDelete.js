@@ -1,4 +1,5 @@
 import { getCurrentProductStock } from './stockLevels';
+import { reverseCreditFromSale } from './customerLedger';
 
 function filterRowsBySaleId(rows, saleId) {
   const sid = String(saleId);
@@ -74,19 +75,7 @@ export async function deleteSaleById(db, saleId) {
 
   const customerId = sale.customer_id ?? sale.customerId ?? null;
   if (creditBack > 0.005 && customerId) {
-    const cust = await db
-      .prepare('SELECT outstanding_balance FROM customers WHERE id = ?')
-      .get(customerId);
-    const cur =
-      Number(cust?.outstanding_balance ?? cust?.outstandingBalance ?? 0) || 0;
-    const next = Math.max(0, Math.round((cur - creditBack) * 100) / 100);
-    await db
-      .prepare(`
-        UPDATE customers
-        SET outstanding_balance = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `)
-      .run(next, customerId);
+    await reverseCreditFromSale(db, customerId, creditBack);
   }
 
   await db.prepare('DELETE FROM sale_items WHERE sale_id = ?').run(sid);

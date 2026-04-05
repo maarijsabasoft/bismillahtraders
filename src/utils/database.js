@@ -126,6 +126,7 @@ export const initDatabase = async () => {
     }
 
     migrateSalesColumns();
+    migrateCustomersLedger();
     return true;
   } catch (error) {
     console.error('Error initializing database:', error);
@@ -135,6 +136,7 @@ export const initDatabase = async () => {
       db = new SQL.Database();
       createTables();
       migrateSalesColumns();
+      migrateCustomersLedger();
       return true;
     } catch (fallbackError) {
       console.error('Fallback database initialization failed:', fallbackError);
@@ -156,6 +158,51 @@ const migrateSalesColumns = () => {
     } catch {
       /* duplicate column — already migrated or in CREATE */
     }
+  }
+};
+
+const migrateCustomersLedger = () => {
+  if (!db) return;
+  const alters = [
+    'ALTER TABLE customers ADD COLUMN acct_total REAL DEFAULT 0',
+    'ALTER TABLE customers ADD COLUMN acct_paid REAL DEFAULT 0',
+  ];
+  for (const sql of alters) {
+    try {
+      db.run(sql);
+    } catch {
+      /* duplicate column */
+    }
+  }
+  try {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS customer_balance_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        entry_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        field_changed TEXT NOT NULL,
+        direction TEXT NOT NULL,
+        amount REAL NOT NULL,
+        total_after REAL NOT NULL,
+        paid_after REAL NOT NULL,
+        remaining_after REAL NOT NULL,
+        note TEXT,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+      )
+    `);
+  } catch (e) {
+    console.warn('customer_balance_history create:', e);
+  }
+  try {
+    db.run(`
+      UPDATE customers
+      SET acct_total = COALESCE(outstanding_balance, 0)
+      WHERE COALESCE(acct_total, 0) = 0
+        AND COALESCE(acct_paid, 0) = 0
+        AND COALESCE(outstanding_balance, 0) > 0
+    `);
+  } catch (e) {
+    console.warn('customers ledger backfill:', e);
   }
 };
 
@@ -231,8 +278,26 @@ const createTables = () => {
       business_type TEXT,
       credit_limit REAL DEFAULT 0,
       outstanding_balance REAL DEFAULT 0,
+      acct_total REAL DEFAULT 0,
+      acct_paid REAL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS customer_balance_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id INTEGER NOT NULL,
+      entry_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+      field_changed TEXT NOT NULL,
+      direction TEXT NOT NULL,
+      amount REAL NOT NULL,
+      total_after REAL NOT NULL,
+      paid_after REAL NOT NULL,
+      remaining_after REAL NOT NULL,
+      note TEXT,
+      FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
     )
   `);
 
