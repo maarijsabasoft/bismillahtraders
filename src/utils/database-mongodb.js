@@ -182,8 +182,7 @@ class MongoDatabaseWrapper {
                 
                 // Skip CURRENT_TIMESTAMP - will be handled by server
                 if (val.toUpperCase() === 'CURRENT_TIMESTAMP' || val.toUpperCase() === 'CURRENT_TIMESTAMP()') {
-                  // Don't add to data, server will handle it - but don't increment paramIndex
-                  console.log('MongoDB: Skipping CURRENT_TIMESTAMP for', col);
+                  // Server sets updated_at; do not consume a bound param
                 } else if (val === '?') {
                   // This is a parameter placeholder
                   if (flatParams[paramIndex] !== undefined) {
@@ -198,15 +197,12 @@ class MongoDatabaseWrapper {
                 const whereField = whereMatch[1];
                 if (flatParams[paramIndex] !== undefined) {
                   filter[whereField] = flatParams[paramIndex];
-                  console.log('MongoDB: UPDATE filter set to', filter, 'from param index', paramIndex, 'value:', flatParams[paramIndex]);
                 } else {
                   console.error('MongoDB: UPDATE WHERE parameter not found at index', paramIndex, 'Total params:', flatParams.length, 'Params:', flatParams);
                 }
               } else {
                 console.error('MongoDB: UPDATE WHERE clause not found in SQL:', sql);
               }
-              
-              console.log('MongoDB: UPDATE parsed - data:', data, 'filter:', filter, 'paramIndex:', paramIndex, 'totalParams:', flatParams.length);
             } else {
               console.error('MongoDB: Could not parse UPDATE SET clause from SQL:', sql);
             }
@@ -232,8 +228,6 @@ class MongoDatabaseWrapper {
             filter,
             data,
           };
-
-          console.log('MongoDB: Making request', requestBody);
 
           const response = await fetchWithTimeout(API_BASE_URL, {
             method: 'POST',
@@ -267,7 +261,6 @@ class MongoDatabaseWrapper {
           }
 
           const result = await response.json();
-          console.log('MongoDB: Operation successful', result);
           return result.data;
         } catch (error) {
           console.error('MongoDB: Database run error:', error.message, sql);

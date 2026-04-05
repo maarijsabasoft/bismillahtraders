@@ -12,9 +12,12 @@ export function buildAtlasMongoClientOptions() {
   const onVercel = isVercelRuntime();
   const disableServerApi = process.env.MONGODB_DISABLE_SERVER_API === '1';
 
+  const pool = Number(process.env.MONGODB_MAX_POOL_SIZE);
+  const maxPoolSize = Number.isFinite(pool) && pool > 0 ? Math.min(pool, 50) : 5;
+
   return {
-    // Single connection per warm lambda reduces stale-socket races; pool still OK across Atlas.
-    maxPoolSize: onVercel ? 1 : 5,
+    // Small pool + ping-before-use avoids stale TLS; override with MONGODB_MAX_POOL_SIZE if needed.
+    maxPoolSize,
     minPoolSize: 0,
     maxIdleTimeMS: onVercel ? 8000 : 20000,
     serverSelectionTimeoutMS,

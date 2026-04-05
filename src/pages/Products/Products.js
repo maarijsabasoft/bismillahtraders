@@ -6,10 +6,11 @@ import Input from '../../components/Input/Input';
 import Modal from '../../components/Modal/Modal';
 import Table from '../../components/Table/Table';
 import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
+import { mongoCrudErrorMessage } from '../../utils/mongoErrors';
 import './Products.css';
 
 const Products = () => {
-  const { db, isReady } = useDatabase();
+  const { db, isReady, dbMode } = useDatabase();
   const [products, setProducts] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,12 +46,21 @@ const Products = () => {
     }
   };
 
+  const normalizeCompanyIdForDb = (raw) => {
+    if (dbMode === 'mongodb') {
+      return String(raw == null ? '' : raw).trim();
+    }
+    const n = parseInt(String(raw), 10);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   const loadProducts = async () => {
     try {
-      // Fetch products and companies separately (MongoDB doesn't support JOINs)
-      const productsResult = await db.prepare('SELECT * FROM products ORDER BY created_at DESC').all();
-      const companiesResult = await db.prepare('SELECT * FROM companies').all();
-      
+      const [productsResult, companiesResult] = await Promise.all([
+        db.prepare('SELECT * FROM products ORDER BY created_at DESC').all(),
+        db.prepare('SELECT * FROM companies').all(),
+      ]);
+
       const products = Array.isArray(productsResult) ? productsResult : [];
       const companies = Array.isArray(companiesResult) ? companiesResult : [];
       
@@ -114,16 +124,7 @@ const Products = () => {
           company_name: companyName
         };
       });
-      
-      // Debug logging
-      if (products.length > 0 && companies.length > 0) {
-        console.log('Products loaded:', products.length);
-        console.log('Companies loaded:', companies.length);
-        console.log('Company map sample:', Object.keys(companyMap).slice(0, 3));
-        console.log('First product company_id:', products[0]?.company_id, 'Type:', typeof products[0]?.company_id);
-        console.log('First product company_name:', productsWithCompanies[0]?.company_name);
-      }
-      
+
       setProducts(productsWithCompanies);
     } catch (error) {
       console.error('Error loading products:', error);
@@ -145,6 +146,12 @@ const Products = () => {
         is_active: formData.is_active ? 1 : 0
       };
 
+      const companyIdForDb = normalizeCompanyIdForDb(data.company_id);
+      if (dbMode === 'mongodb' && !companyIdForDb) {
+        alert('Please select a company.');
+        return;
+      }
+
       if (editingProduct) {
         await db.prepare(`
           UPDATE products 
@@ -153,7 +160,7 @@ const Products = () => {
               discount_rate = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
           WHERE id = ?
         `).run(
-          parseInt(data.company_id), data.name, data.sku || null, data.barcode || null,
+          companyIdForDb, data.name, data.sku || null, data.barcode || null,
           data.category || null, data.bottle_size || null, data.purchase_price,
           data.sale_price, data.tax_rate, data.discount_rate, data.is_active,
           editingProduct.id
@@ -165,7 +172,7 @@ const Products = () => {
            sale_price, tax_rate, discount_rate, is_active)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
-          parseInt(data.company_id), data.name, data.sku || null, data.barcode || null,
+          companyIdForDb, data.name, data.sku || null, data.barcode || null,
           data.category || null, data.bottle_size || null, data.purchase_price,
           data.sale_price, data.tax_rate, data.discount_rate, data.is_active
         );
@@ -176,7 +183,11 @@ const Products = () => {
       handleCloseModal();
     } catch (error) {
       console.error('Error saving product:', error);
-      alert('Error saving product.');
+      alert(
+        `Could not save product.\n\n${mongoCrudErrorMessage(error, dbMode, {
+          duplicateHint: 'SKU must be unique. Clear SKU or use a different one.',
+        })}`
+      );
     }
   };
 
@@ -212,7 +223,7 @@ const Products = () => {
         await loadProducts();
       } catch (error) {
         console.error('Error deleting product:', error);
-        alert('Cannot delete product. It may have associated sales or inventory.');
+        alert(`Could not delete product.\n\n${mongoCrudErrorMessage(error, dbMode)}`);
       }
     }
   };
@@ -336,7 +347,7 @@ const Products = () => {
               >
                 <option value="">Select Company</option>
                 {Array.isArray(companies) && companies.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={String(c.id)} value={String(c.id)}>
                     {c.name}
                   </option>
                 ))}
