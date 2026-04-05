@@ -34,24 +34,8 @@ const Products = () => {
   useEffect(() => {
     if (isReady && db && location.pathname === '/products') {
       loadProducts();
-      loadCompanies();
     }
   }, [db, isReady, dataRevision, location.pathname]);
-
-  const loadCompanies = async () => {
-    try {
-      const result = await db.prepare('SELECT * FROM companies ORDER BY name').all();
-      setCompanies(Array.isArray(result) ? result : []);
-    } catch (error) {
-      console.error('Error loading companies:', error);
-      setCompanies([]);
-    }
-  };
-
-  useEffect(() => {
-    if (!isReady || !db || !isModalOpen) return;
-    loadCompanies();
-  }, [isModalOpen, isReady, db, dataRevision]);
 
   const normalizeCompanyIdForDb = (raw) => {
     if (dbMode === 'mongodb') {
@@ -133,6 +117,11 @@ const Products = () => {
       });
 
       setProducts(productsWithCompanies);
+
+      const sortedCompanies = [...companies].sort((a, b) =>
+        String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' })
+      );
+      setCompanies(sortedCompanies);
     } catch (error) {
       console.error('Error loading products:', error);
       setProducts([]);
@@ -295,8 +284,6 @@ const Products = () => {
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
-    // Reload companies when opening modal to ensure latest data
-    loadCompanies();
   };
 
   const handleCloseModal = () => {

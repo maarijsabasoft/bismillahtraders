@@ -580,6 +580,42 @@ class MongoDatabaseWrapper {
       },
     };
   }
+
+  /** Single API request — all dashboard aggregates run on the server in parallel. */
+  async getDashboardStats() {
+    const authToken = getAuthToken();
+    if (!authToken) {
+      throw new Error('Not authenticated');
+    }
+    const today = new Date().toISOString().split('T')[0];
+    const response = await fetchWithTimeout(API_BASE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Basic ${authToken}`,
+      },
+      body: JSON.stringify({
+        method: 'dashboardStats',
+        collection: 'dashboard',
+        filter: {},
+        data: { today },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let err;
+      try {
+        err = JSON.parse(errorText);
+      } catch {
+        err = { message: errorText || `HTTP ${response.status}` };
+      }
+      throw new Error(err.message || err.error || 'Dashboard stats failed');
+    }
+
+    const result = await response.json();
+    return result.data;
+  }
 }
 
 let mongoDbWrapper = null;

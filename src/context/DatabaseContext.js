@@ -74,9 +74,17 @@ export const DatabaseProvider = ({ children }) => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
+    const hiddenAtRef = { current: null };
+    const MIN_HIDDEN_MS = 45_000;
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        setDataRevision((n) => n + 1);
+        const hiddenAt = hiddenAtRef.current;
+        hiddenAtRef.current = null;
+        if (hiddenAt != null && Date.now() - hiddenAt >= MIN_HIDDEN_MS) {
+          setDataRevision((n) => n + 1);
+        }
+      } else {
+        hiddenAtRef.current = Date.now();
       }
     };
     document.addEventListener('visibilitychange', onVisible);

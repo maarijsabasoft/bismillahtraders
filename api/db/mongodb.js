@@ -44,6 +44,71 @@ async function getDatabase() {
   return cachedDb;
 }
 
+/** One HTTP round-trip for dashboard — avoids N sequential serverless invocations. */
+async function runDashboardStats(db, data = {}) {
+  const today =
+    typeof data.today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.today)
+      ? data.today
+      : new Date().toISOString().split('T')[0];
+
+  const sumField = (field) => ({
+    $sum: {
+      $convert: {
+        input: `$${field}`,
+        to: 'double',
+        onError: 0,
+        onNull: 0,
+      },
+    },
+  });
+
+  const sales = db.collection('sales');
+  const customers = db.collection('customers');
+  const products = db.collection('products');
+  const stockLevels = db.collection('stock_levels');
+
+  const [
+    totalSalesRows,
+    todaySalesRows,
+    totalCustomers,
+    totalProducts,
+    lowStock,
+    balanceRows,
+  ] = await Promise.all([
+    sales.aggregate([{ $group: { _id: null, total: sumField('final_amount') } }]).toArray(),
+    sales
+      .aggregate([
+        {
+          $addFields: {
+            _saleDay: {
+              $substrBytes: [{ $toString: { $ifNull: ['$sale_date', ''] } }, 0, 10],
+            },
+          },
+        },
+        { $match: { _saleDay: today } },
+        { $group: { _id: null, total: sumField('final_amount') } },
+      ])
+      .toArray(),
+    customers.countDocuments({}),
+    products.countDocuments({ is_active: { $in: [1, true] } }),
+    stockLevels.countDocuments({
+      $expr: { $lte: ['$quantity', '$low_stock_threshold'] },
+    }),
+    customers
+      .aggregate([{ $group: { _id: null, total: sumField('outstanding_balance') } }])
+      .toArray(),
+  ]);
+
+  return {
+    totalSales: Number(totalSalesRows[0]?.total) || 0,
+    todaySales: Number(todaySalesRows[0]?.total) || 0,
+    totalCustomers,
+    totalProducts,
+    lowStock,
+    outstandingBalance: Number(balanceRows[0]?.total) || 0,
+  };
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -63,7 +128,13 @@ export default async function handler(req, res) {
 
   try {
     const db = await getDatabase();
-    const { method, collection, filter = {}, data = {}, options = {} } = req.body;
+    const body = req.body || {};
+    const { method, collection, filter = {}, data = {}, options = {} } = body;
+
+    if (method === 'dashboardStats') {
+      const stats = await runDashboardStats(db, data);
+      return res.status(200).json({ success: true, data: stats });
+    }
 
     if (!method || !collection) {
       return res.status(400).json({ error: 'Method and collection required' });
@@ -209,6 +280,7 @@ export default async function handler(req, res) {
             'deleteMany',
             'aggregate',
             'count',
+            'dashboardStats',
           ],
         });
     }

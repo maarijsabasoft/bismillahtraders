@@ -19,44 +19,55 @@ const Dashboard = () => {
 
     const loadStats = async () => {
       try {
-        // Total Sales
-        const salesResult = await db.prepare('SELECT SUM(final_amount) as total FROM sales').get();
-        const totalSales = parseFloat(salesResult?.total) || 0;
+        if (typeof db.getDashboardStats === 'function') {
+          const s = await db.getDashboardStats();
+          if (s != null) {
+            setStats({
+              totalSales: Number(s.totalSales) || 0,
+              todaySales: Number(s.todaySales) || 0,
+              totalCustomers: Number(s.totalCustomers) || 0,
+              totalProducts: Number(s.totalProducts) || 0,
+              lowStock: Number(s.lowStock) || 0,
+              outstandingBalance: Number(s.outstandingBalance) || 0,
+            });
+            return;
+          }
+        }
 
-        // Today's Sales
         const today = new Date().toISOString().split('T')[0];
-        const todayResult = await db.prepare(`
+        const [
+          salesResult,
+          todayResult,
+          customersResult,
+          productsResult,
+          lowStockResult,
+          balanceResult,
+        ] = await Promise.all([
+          db.prepare('SELECT SUM(final_amount) as total FROM sales').get(),
+          db
+            .prepare(`
           SELECT SUM(final_amount) as total FROM sales 
           WHERE date(sale_date) = date(?)
-        `).get(today);
-        const todaySales = parseFloat(todayResult?.total) || 0;
-
-        // Total Customers
-        const customersResult = await db.prepare('SELECT COUNT(*) as count FROM customers').get();
-        const totalCustomers = parseInt(customersResult?.count) || 0;
-
-        // Total Products
-        const productsResult = await db.prepare('SELECT COUNT(*) as count FROM products WHERE is_active = 1').get();
-        const totalProducts = parseInt(productsResult?.count) || 0;
-
-        // Low Stock
-        const lowStockResult = await db.prepare(`
+        `)
+            .get(today),
+          db.prepare('SELECT COUNT(*) as count FROM customers').get(),
+          db.prepare('SELECT COUNT(*) as count FROM products WHERE is_active = 1').get(),
+          db
+            .prepare(`
           SELECT COUNT(*) as count FROM stock_levels 
           WHERE quantity <= low_stock_threshold
-        `).get();
-        const lowStock = parseInt(lowStockResult?.count) || 0;
-
-        // Outstanding Balance
-        const balanceResult = await db.prepare('SELECT SUM(outstanding_balance) as total FROM customers').get();
-        const outstandingBalance = parseFloat(balanceResult?.total) || 0;
+        `)
+            .get(),
+          db.prepare('SELECT SUM(outstanding_balance) as total FROM customers').get(),
+        ]);
 
         setStats({
-          totalSales,
-          todaySales,
-          totalCustomers,
-          totalProducts,
-          lowStock,
-          outstandingBalance
+          totalSales: parseFloat(salesResult?.total) || 0,
+          todaySales: parseFloat(todayResult?.total) || 0,
+          totalCustomers: parseInt(customersResult?.count, 10) || 0,
+          totalProducts: parseInt(productsResult?.count, 10) || 0,
+          lowStock: parseInt(lowStockResult?.count, 10) || 0,
+          outstandingBalance: parseFloat(balanceResult?.total) || 0,
         });
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);

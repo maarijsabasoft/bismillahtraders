@@ -81,6 +81,13 @@ class HybridDatabaseWrapper {
     return activeDb.prepare(sql);
   }
 
+  async getDashboardStats() {
+    if (this.useMongo && this.mongoDb?.getDashboardStats) {
+      return this.mongoDb.getDashboardStats();
+    }
+    return null;
+  }
+
   // Get current database mode
   getMode() {
     return this.useMongo ? 'mongodb' : 'local';

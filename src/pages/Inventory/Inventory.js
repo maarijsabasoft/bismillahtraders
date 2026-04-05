@@ -25,27 +25,17 @@ const Inventory = () => {
   useEffect(() => {
     if (isReady && db) {
       loadStockLevels();
-      loadProducts();
     }
   }, [db, isReady, dataRevision]);
 
-  const loadProducts = async () => {
-    try {
-      const result = await db.prepare('SELECT * FROM products WHERE is_active = 1 ORDER BY name').all();
-      setProducts(Array.isArray(result) ? result : []);
-    } catch (error) {
-      console.error('Error loading products:', error);
-      setProducts([]);
-    }
-  };
-
   const loadStockLevels = async () => {
     try {
-      // Fetch products, companies, stock levels, and inventory transactions
-      const productsResult = await db.prepare('SELECT * FROM products WHERE is_active = 1 ORDER BY name').all();
-      const companiesResult = await db.prepare('SELECT * FROM companies').all();
-      const stockLevelsResult = await db.prepare('SELECT * FROM stock_levels').all();
-      const inventoryResult = await db.prepare('SELECT product_id, quantity FROM inventory').all();
+      const [productsResult, companiesResult, stockLevelsResult, inventoryResult] = await Promise.all([
+        db.prepare('SELECT * FROM products WHERE is_active = 1 ORDER BY name').all(),
+        db.prepare('SELECT * FROM companies').all(),
+        db.prepare('SELECT * FROM stock_levels').all(),
+        db.prepare('SELECT product_id, quantity FROM inventory').all(),
+      ]);
       
       const products = Array.isArray(productsResult) ? productsResult : [];
       const companies = Array.isArray(companiesResult) ? companiesResult : [];
@@ -169,11 +159,13 @@ const Inventory = () => {
           updated_at: stock?.updated_at || null
         };
       });
-      
+
+      setProducts(products);
       setStockLevels(productsWithData);
     } catch (error) {
       console.error('Error loading stock levels:', error);
       setStockLevels([]);
+      setProducts([]);
     }
   };
 
@@ -274,8 +266,6 @@ const Inventory = () => {
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
-    // Reload products when opening modal to ensure latest data
-    loadProducts();
   };
 
   const handleCloseModal = () => {
