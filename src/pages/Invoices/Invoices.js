@@ -404,48 +404,55 @@ const Invoices = () => {
               <Button
                 variant="secondary"
                 size="small"
+                className="btn-icon-only"
+                title="View invoice"
+                aria-label="View invoice"
                 onClick={(e) => {
                   e.stopPropagation();
                   viewInvoice(row);
                 }}
               >
-                <FiEye /> View
+                <FiEye />
               </Button>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <Button
-                  variant="primary"
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    printInvoice(row, 'a4');
-                  }}
-                  title="Print A4 Invoice"
-                >
-                  <FiFileText /> A4
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    printInvoice(row, 'slip');
-                  }}
-                  title="Print Receipt Slip"
-                >
-                  <FiPrinter /> Slip
-                </Button>
-                <Button
-                  variant="danger"
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteInvoice(row);
-                  }}
-                  title="Delete invoice"
-                >
-                  <FiTrash2 />
-                </Button>
-              </div>
+              <Button
+                variant="primary"
+                size="small"
+                className="btn-icon-only"
+                title="Print A4 invoice"
+                aria-label="Print A4 invoice"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  printInvoice(row, 'a4');
+                }}
+              >
+                <FiFileText />
+              </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                className="btn-icon-only"
+                title="Print receipt slip (2.5 inch)"
+                aria-label="Print receipt slip"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  printInvoice(row, 'slip');
+                }}
+              >
+                <FiPrinter />
+              </Button>
+              <Button
+                variant="danger"
+                size="small"
+                className="btn-icon-only"
+                title="Delete invoice"
+                aria-label="Delete invoice"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteInvoice(row);
+                }}
+              >
+                <FiTrash2 />
+              </Button>
             </>
           )}
         />
@@ -460,27 +467,36 @@ const Invoices = () => {
             size="large"
           >
             <div className="invoice-view">
-              <div className="invoice-actions" style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              <div className="invoice-actions">
                 <Button
                   variant="primary"
                   size="small"
+                  className="btn-icon-only"
+                  title="Print A4 invoice"
+                  aria-label="Print A4 invoice"
                   onClick={() => printInvoice(selectedInvoice, 'a4')}
                 >
-                  <FiFileText /> Print A4
+                  <FiFileText />
                 </Button>
                 <Button
                   variant="secondary"
                   size="small"
+                  className="btn-icon-only"
+                  title="Print receipt slip (2.5 inch)"
+                  aria-label="Print receipt slip"
                   onClick={() => printInvoice(selectedInvoice, 'slip')}
                 >
-                  <FiPrinter /> Print Slip
+                  <FiPrinter />
                 </Button>
                 <Button
                   variant="danger"
                   size="small"
+                  className="btn-icon-only"
+                  title="Delete invoice"
+                  aria-label="Delete invoice"
                   onClick={() => handleDeleteInvoice(selectedInvoice)}
                 >
-                  <FiTrash2 /> Delete
+                  <FiTrash2 />
                 </Button>
               </div>
               

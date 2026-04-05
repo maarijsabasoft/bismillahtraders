@@ -11,6 +11,8 @@
 .invoice-actions {
   margin-bottom: 16px;
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
 }
 
@@ -210,15 +212,17 @@
   font-style: italic;
 }
 
-/* Receipt Slip Styles */
+/* Receipt slip — 2.5" thermal (screen preview matches print width) */
 .invoice-slip {
-  max-width: 80mm;
+  width: 2.5in;
+  max-width: 2.5in;
   margin: 0 auto;
-  padding: 10mm 8mm;
+  padding: 0.15in 0.12in;
   background: white;
   font-family: 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 11px;
   color: #000;
+  box-sizing: border-box;
 }
 
 .invoice-slip .slip-header {
@@ -359,87 +363,96 @@
   }
 
   .print-container {
-    display: flex !important;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
+    display: block !important;
     position: absolute;
     left: 0;
     top: 0;
     width: 100% !important;
-    min-height: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
     box-sizing: border-box;
   }
 
   .invoice-print {
     display: none !important;
     width: 100%;
-    justify-content: center;
-    align-items: flex-start;
+    margin: 0;
+    padding: 0;
   }
 
   .invoice-print.active {
-    display: flex !important;
-    justify-content: center;
+    display: block !important;
     width: 100%;
+    margin: 0;
+    padding: 0;
   }
 
-  /* A4 — centered, uses printable width */
+  /* A4 — full sheet (app header/sidebar hidden via .no-print + print.css) */
   .invoice-a4-print.active {
-    page-break-after: always;
+    page: a4invoice;
+    page-break-after: auto;
   }
 
   .invoice-a4-print.active .invoice-a4 {
-    width: 100%;
-    max-width: 190mm;
-    margin: 0 auto !important;
-    padding: 12mm 10mm;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    padding: 14mm 16mm !important;
     box-sizing: border-box;
-    box-shadow: none;
+    box-shadow: none !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  /* Slip — centered (not stuck in corner); thermal-friendly width */
+  /* Slip — page width = 2.5" roll, content fills that page (not a tiny box on A4) */
   .invoice-slip-print.active {
-    page-break-after: always;
-    page: slip;
+    page: slipreceipt;
+    page-break-after: auto;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .invoice-slip-print.active .invoice-slip {
-    width: 80mm !important;
-    min-width: 72mm !important;
-    max-width: 80mm !important;
-    margin: 0 auto !important;
-    padding: 6mm 5mm !important;
-    box-sizing: border-box;
-    box-shadow: none;
-    font-size: 11pt !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0.12in 0.1in !important;
+    box-sizing: border-box !important;
+    box-shadow: none !important;
+    font-size: 9pt !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   .invoice-slip-print.active .invoice-slip .slip-header h2 {
-    font-size: 16pt !important;
+    font-size: 11pt !important;
   }
 
   .invoice-slip-print.active .invoice-slip .slip-row,
   .invoice-slip-print.active .invoice-slip .slip-item-name {
-    font-size: 10pt !important;
+    font-size: 8.5pt !important;
   }
 
   .invoice-slip-print.active .invoice-slip .slip-total-final {
-    font-size: 13pt !important;
+    font-size: 10pt !important;
   }
 
   @page {
-    size: A4 portrait;
-    margin: 10mm;
+    margin: 0;
   }
 
-  @page slip {
-    size: 80mm auto;
-    margin: 2mm;
+  @page a4invoice {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  @page slipreceipt {
+    size: 2.5in auto;
+    margin: 0.06in;
   }
 }
 
@@ -461,7 +474,8 @@
 }
 
 .invoice-container.invoice-slip {
-  max-width: 80mm;
+  width: 2.5in;
+  max-width: 2.5in;
   margin: 20px auto;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }

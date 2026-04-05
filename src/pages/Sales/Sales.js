@@ -130,13 +130,17 @@ const Sales = () => {
     );
   };
 
+  const lineQtyOf = (item) => Math.max(0, parseInt(item.quantity, 10) || 0);
+
   const calculateTotals = () => {
     let subtotal = 0;
     let totalDiscount = 0;
     let totalTax = 0;
 
     cart.forEach((item) => {
-      const itemSubtotal = item.quantity * item.unit_price;
+      const q = lineQtyOf(item);
+      if (q < 1) return;
+      const itemSubtotal = q * item.unit_price;
       const itemDiscount = (itemSubtotal * item.discount) / 100;
       const itemAfterDiscount = itemSubtotal - itemDiscount;
       const itemTax = (itemAfterDiscount * item.tax) / 100;
@@ -158,6 +162,11 @@ const Sales = () => {
       return;
     }
 
+    if (!cart.some((item) => lineQtyOf(item) >= 1)) {
+      toastError('Set quantity to at least 1 for each product you want to sell.');
+      return;
+    }
+
     try {
       const { subtotal, totalDiscount, totalTax, finalAmount } = calculateTotals();
       const cashAmt = Math.max(0, parseFloat(formData.cash_paid) || 0);
@@ -171,10 +180,15 @@ const Sales = () => {
       }
 
       for (const item of cart) {
+        const q = lineQtyOf(item);
+        if (q < 1) {
+          toastError(`Quantity must be at least 1 for "${item.product_name}".`);
+          return;
+        }
         const avail = await getCurrentProductStock(db, item.product_id);
-        if (avail < item.quantity) {
+        if (avail < q) {
           toastError(
-            `Not enough stock for "${item.product_name}". Available: ${avail}, needed: ${item.quantity}.`
+            `Not enough stock for "${item.product_name}". Available: ${avail}, needed: ${q}.`
           );
           return;
         }
@@ -222,7 +236,10 @@ const Sales = () => {
       const saleId = saleResult.lastInsertRowid;
 
       for (const item of cart) {
-        const itemSubtotal = item.quantity * item.unit_price;
+        const lineQty = lineQtyOf(item);
+        if (lineQty < 1) continue;
+
+        const itemSubtotal = lineQty * item.unit_price;
         const itemDiscount = (itemSubtotal * item.discount) / 100;
         const itemAfterDiscount = itemSubtotal - itemDiscount;
         const itemTax = (itemAfterDiscount * item.tax) / 100;
@@ -236,7 +253,7 @@ const Sales = () => {
           .run(
             saleId,
             item.product_id,
-            item.quantity,
+            lineQty,
             item.unit_price,
             item.discount,
             item.tax,
@@ -244,7 +261,7 @@ const Sales = () => {
           );
 
         const qtyAvail = await getCurrentProductStock(db, item.product_id);
-        const nextQty = qtyAvail - item.quantity;
+        const nextQty = qtyAvail - lineQty;
 
         let existing = await db.prepare('SELECT * FROM stock_levels WHERE product_id = ?').get(item.product_id);
         if (!existing && /^\d+$/.test(String(item.product_id))) {
@@ -253,6 +270,8 @@ const Sales = () => {
             .get(parseInt(String(item.product_id), 10));
         }
 
+        const stockPid = existing?.product_id != null ? existing.product_id : item.product_id;
+
         if (existing) {
           await db
             .prepare(`
@@ -260,7 +279,7 @@ const Sales = () => {
             SET quantity = ?, updated_at = CURRENT_TIMESTAMP
             WHERE product_id = ?
           `)
-            .run(nextQty, item.product_id);
+            .run(nextQty, stockPid);
         } else {
           await db
             .prepare(`
@@ -275,7 +294,7 @@ const Sales = () => {
           INSERT INTO inventory (product_id, transaction_type, quantity, notes)
           VALUES (?, 'OUT', ?, ?)
         `)
-          .run(item.product_id, item.quantity, `Sale - Invoice: ${invoiceNumber}`);
+          .run(stockPid, lineQty, `Sale - Invoice: ${invoiceNumber}`);
       }
 
       if (formData.customer_id && creditPortion > 0.005) {

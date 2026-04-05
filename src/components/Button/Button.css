@@ -20,6 +20,13 @@
   font-size: 13px;
 }
 
+/* Icon-only: hover uses native title tooltip; keep square tap targets */
+.btn-icon-only {
+  min-width: 36px;
+  padding: 6px 8px;
+  gap: 0;
+}
+
 .btn-medium {
   padding: 10px 20px;
   font-size: 14px;

@@ -1,6 +1,27 @@
-/* Global print: hide chrome (Invoices page adds its own print rules). */
+/* Global print: hide app chrome; trim document edge (browser URL/date are in the print dialog). */
 @media print {
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   .no-print {
     display: none !important;
+  }
+
+  .layout,
+  .layout-main,
+  .layout-content {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    max-width: none !important;
   }
 }
