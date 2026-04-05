@@ -540,7 +540,7 @@
     color: #123056 !important;
   }
 
-  /* Slip — page width = 2.5" roll, content fills that page (not a tiny box on A4) */
+  /* Slip — fixed 2.5" content, centered (thermal width in preview even if paper is A4) */
   .invoice-slip-print.active {
     page: slipreceipt;
     page-break-after: auto;
@@ -548,13 +548,17 @@
     max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
   }
 
   .invoice-slip-print.active .invoice-slip {
-    width: 100% !important;
+    width: 2.5in !important;
     min-width: 0 !important;
-    max-width: none !important;
-    margin: 0 !important;
+    max-width: 2.5in !important;
+    margin: 0 auto !important;
     padding: 0.12in 0.1in !important;
     box-sizing: border-box !important;
     box-shadow: none !important;
@@ -613,9 +617,18 @@
 
 .invoice-container.invoice-slip {
   width: 2.5in;
-  max-width: 2.5in;
+  max-width: min(2.5in, 100%);
   margin: 20px auto;
+  padding: 10px 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-sizing: border-box;
+}
+
+/* One thermal column: outer box is 2.5", inner receipt fills it (no double fixed width). */
+.invoice-container.invoice-slip .invoice-slip {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 /* Ensure invoice-view allows horizontal scroll on mobile */
@@ -658,8 +671,10 @@
   }
 
   .invoice-container.invoice-slip {
-    max-width: 100%;
-    margin: 16px 0;
+    width: 2.5in;
+    max-width: min(2.5in, calc(100vw - 48px));
+    margin: 16px auto;
+    padding: 10px 8px;
   }
 }
 
@@ -690,5 +705,12 @@
 
   .invoice-a4 .company-info h1 {
     font-size: 24px;
+  }
+
+  .invoice-container.invoice-slip {
+    width: 2.5in;
+    max-width: min(2.5in, calc(100vw - 32px));
+    margin: 12px auto;
+    padding: 10px 8px;
   }
 }

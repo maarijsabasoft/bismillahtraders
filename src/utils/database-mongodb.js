@@ -383,8 +383,10 @@ class MongoDatabaseWrapper {
               );
             }
             const delMany =
-              collection === 'sale_items' &&
-              Object.prototype.hasOwnProperty.call(filter, 'sale_id');
+              (collection === 'sale_items' &&
+                Object.prototype.hasOwnProperty.call(filter, 'sale_id')) ||
+              ((collection === 'inventory' || collection === 'stock_levels') &&
+                Object.prototype.hasOwnProperty.call(filter, 'product_id'));
             method = delMany ? 'deleteMany' : 'deleteOne';
           } else {
             throw new Error(`Unsupported SQL operation: ${sql.substring(0, 20)}...`);

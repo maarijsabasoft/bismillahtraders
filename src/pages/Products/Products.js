@@ -10,6 +10,7 @@ import Modal from '../../components/Modal/Modal';
 import Table from '../../components/Table/Table';
 import { FiEdit2, FiTrash2, FiPlus } from 'react-icons/fi';
 import { mongoCrudErrorMessage } from '../../utils/mongoErrors';
+import { deleteProductCascade } from '../../utils/productDelete';
 import { useToast } from '../../context/ToastContext';
 import './Products.css';
 
@@ -312,7 +313,7 @@ const Products = () => {
       const idStr = String(id);
       setProducts((prev) => prev.filter((p) => String(p.id) !== idStr));
       try {
-        await db.prepare('DELETE FROM products WHERE id = ?').run(id);
+        await deleteProductCascade(db, id);
       } catch (error) {
         console.error('Error deleting product:', error);
         setProducts(snapshot);
