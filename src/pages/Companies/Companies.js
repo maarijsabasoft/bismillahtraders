@@ -38,17 +38,45 @@ const Companies = () => {
     if (!formData.name.trim()) return;
 
     try {
+      const now = new Date().toISOString();
       if (editingCompany) {
         await db.prepare(`
           UPDATE companies 
           SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP 
           WHERE id = ?
         `).run(formData.name, formData.description || null, editingCompany.id);
+        setCompanies((prev) =>
+          prev.map((c) =>
+            String(c.id) === String(editingCompany.id)
+              ? {
+                  ...c,
+                  name: formData.name.trim(),
+                  description: formData.description || null,
+                  updated_at: now,
+                }
+              : c
+          )
+        );
       } else {
-        await db.prepare('INSERT INTO companies (name, description) VALUES (?, ?)')
+        const out = await db
+          .prepare('INSERT INTO companies (name, description) VALUES (?, ?)')
           .run(formData.name, formData.description || null);
+        const newId = out?.lastInsertRowid != null ? String(out.lastInsertRowid) : null;
+        if (newId) {
+          setCompanies((prev) => [
+            {
+              id: newId,
+              name: formData.name.trim(),
+              description: formData.description || null,
+              created_at: now,
+              updated_at: now,
+            },
+            ...prev,
+          ]);
+        } else {
+          await loadCompanies();
+        }
       }
-      await loadCompanies();
       handleCloseModal();
     } catch (error) {
       console.error('Error saving company:', error);
@@ -70,7 +98,7 @@ const Companies = () => {
     if (window.confirm('Are you sure you want to delete this company?')) {
       try {
         await db.prepare('DELETE FROM companies WHERE id = ?').run(id);
-        await loadCompanies();
+        setCompanies((prev) => prev.filter((c) => String(c.id) !== String(id)));
       } catch (error) {
         console.error('Error deleting company:', error);
         alert(`Could not delete company.\n\n${mongoCrudErrorMessage(error, dbMode)}`);

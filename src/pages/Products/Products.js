@@ -152,6 +152,10 @@ const Products = () => {
         return;
       }
 
+      const companyName =
+        companies.find((c) => String(c.id) === String(companyIdForDb))?.name ?? null;
+      const now = new Date().toISOString();
+
       if (editingProduct) {
         await db.prepare(`
           UPDATE products 
@@ -165,8 +169,30 @@ const Products = () => {
           data.sale_price, data.tax_rate, data.discount_rate, data.is_active,
           editingProduct.id
         );
+        setProducts((prev) =>
+          prev.map((p) =>
+            String(p.id) === String(editingProduct.id)
+              ? {
+                  ...p,
+                  company_id: companyIdForDb,
+                  company_name: companyName,
+                  name: data.name,
+                  sku: data.sku || null,
+                  barcode: data.barcode || null,
+                  category: data.category || null,
+                  bottle_size: data.bottle_size || null,
+                  purchase_price: data.purchase_price,
+                  sale_price: data.sale_price,
+                  tax_rate: data.tax_rate,
+                  discount_rate: data.discount_rate,
+                  is_active: data.is_active,
+                  updated_at: now,
+                }
+              : p
+          )
+        );
       } else {
-        await db.prepare(`
+        const out = await db.prepare(`
           INSERT INTO products 
           (company_id, name, sku, barcode, category, bottle_size, purchase_price, 
            sale_price, tax_rate, discount_rate, is_active)
@@ -176,10 +202,33 @@ const Products = () => {
           data.category || null, data.bottle_size || null, data.purchase_price,
           data.sale_price, data.tax_rate, data.discount_rate, data.is_active
         );
+        const newId = out?.lastInsertRowid != null ? String(out.lastInsertRowid) : null;
+        if (newId) {
+          setProducts((prev) => [
+            {
+              id: newId,
+              company_id: companyIdForDb,
+              company_name: companyName,
+              name: data.name,
+              sku: data.sku || null,
+              barcode: data.barcode || null,
+              category: data.category || null,
+              bottle_size: data.bottle_size || null,
+              purchase_price: data.purchase_price,
+              sale_price: data.sale_price,
+              tax_rate: data.tax_rate,
+              discount_rate: data.discount_rate,
+              is_active: data.is_active,
+              created_at: now,
+              updated_at: now,
+            },
+            ...prev,
+          ]);
+        } else {
+          await loadProducts();
+        }
       }
-      
-      // Reload products after successful operation
-      await loadProducts();
+
       handleCloseModal();
     } catch (error) {
       console.error('Error saving product:', error);
@@ -219,8 +268,7 @@ const Products = () => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
         await db.prepare('DELETE FROM products WHERE id = ?').run(id);
-        // Reload products after successful deletion
-        await loadProducts();
+        setProducts((prev) => prev.filter((p) => String(p.id) !== String(id)));
       } catch (error) {
         console.error('Error deleting product:', error);
         alert(`Could not delete product.\n\n${mongoCrudErrorMessage(error, dbMode)}`);
